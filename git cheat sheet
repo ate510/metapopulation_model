@@ -1,0 +1,31 @@
+git cheat sheet
+
+1) Open the terminal
+2) Navigate to the folder with your git repository using the "cd" command
+	cd Dropbox/Anne_Bansal_lab/.... etc.
+3) View status of untracked and modified files in your folder
+	git status
+4) Add changed files
+	git add program_name.py program_name2.py
+5) Commit the changes
+	git commit
+6) A popup gedit window will appear. Write yourself some notes about the changes that were made. Save the file and close it. Return to the terminal.
+7) Push the changes you've made to Github.
+	git push origin master
+	type your Github email address and password
+8) View recent commits
+	git log
+
+--------------------------------------------
+.gitignore is a file with the list of folders and files that you aren't interested in tracking. If you add a file/folder to .gitignore, it will not show up in your list of Untracked files if you run "git status". To make changes to .gitignore:
+
+1) Open the terminal
+2) Navigate to the director where your repository is located (I've put an empty .gitignore file there too.)
+3) List your files to double check that your .git repository and .gitignore file are there
+	ls -a
+4) Open the .gitignore
+	gedit .gitignore
+5) A gedit window will popup. Add any files or folder paths to the file (perhaps you'll want to ignore this cheat sheet, for instance). Save and close the file. Return to the terminal.
+6) Check that the files are now being ignored.
+	git status
+7) Add and commit the .gitignore to your repository
