@@ -187,16 +187,13 @@ def aggregate_within_group_contacts (filename_germ_within_group_contact_data, fi
     ## ie. dict_agg_contacts['05-09'] = # contacts with adults   
     dict_agg_contacts = {} #key: age of part, value: number of contacts with same large age group (children or adults)
     for age in child_ages:
-        # multiply contacts by pop of contact age group
-        contacts_top = sum([((dict_contacts[age, (contact_key_dict[int_age])]) * (dict_germ_pop[(pop_key_dict[int_age])])) for int_age in child_first_key])
-        pop_bottom = sum([dict_germ_pop[pop_age] for pop_age in child_keys])
-        weighted_avg = (contacts_top / pop_bottom)    
-        dict_agg_contacts[age] = weighted_avg
+        # sum contacts 
+        child_contacts = sum([(dict_contacts[age, (contact_key_dict[int_age])]) for int_age in child_first_key])
+        dict_agg_contacts[age] = child_contacts
     for age in adult_ages:
-        contacts_top = sum([((dict_contacts[age, (contact_key_dict[int_age])]) * (dict_germ_pop[(pop_key_dict[int_age])])) for int_age in adult_first_key])
-        pop_bottom = sum([dict_germ_pop[pop_age] for pop_age in adult_keys])
-        weighted_avg = (contacts_top / pop_bottom)    
-        dict_agg_contacts[age] = weighted_avg
+        # sum contacts
+        adult_contacts = sum([(dict_contacts[age, (contact_key_dict[int_age])]) for int_age in adult_first_key])
+        dict_agg_contacts[age] = adult_contacts
         
     contacts_child = sum([((dict_agg_contacts[(contact_key_dict[int_age])]) * (dict_germ_pop[(pop_key_dict[int_age])])) for int_age in child_first_key])
     child_pop = sum([dict_germ_pop[pop_age] for pop_age in child_keys])
@@ -208,7 +205,8 @@ def aggregate_within_group_contacts (filename_germ_within_group_contact_data, fi
     weighted_avg = (contacts_adult / adult_pop)   
     C_ji = weighted_avg
     
-    return C_ij, C_ji, child_pop, adult_pop      
+    return C_ij, C_ji, child_pop, adult_pop   
+       
 ###################################################
 def aggregate_contacts (filename_germ_contact_data, filename_germ_pop_data):
 # using Germany data
@@ -355,7 +353,47 @@ def weighted_avg_q (age_list):
     return avg_q
     
 ###################################################
-def calc_p (filename_germ_within_group_contact_data, filename_germ_pop_data):
+def calc_q (filename_contact, filename_pop):
+# calculate q from germany data
+# filename_contact = filename_germ_all_contact_data
+# filename_pop = filename_germ_pop_data
+
+    # import age to contact dictionary, lists of contact keys for children and adults, and integer age to contact formatted age dict
+    dict_contacts, child_ages, adult_ages, contact_key_dict = organize_germ_contact_data(filename_contact) 
+    
+    # import age to pop dictionary, and dictionary with integer age to pop-formatted age 
+    dict_germ_pop, child_first_key, adult_first_key, child_keys, adult_keys, pop_key_dict = organize_germ_pop_data(filename_pop, ch_1, ch_2, ad_1, ad_2)    
+    
+    all_first_key = child_first_key + adult_first_key
+     
+    ## sum contacts for individual groups 
+    ## ie. dict_sum_contacts['05-09'] = # contacts with ages 5-69   
+    dict_sum_contacts = {} #key: age of part, value: number of contacts with all ages
+    for age in child_ages:
+        # sum contacts 
+        child_contacts = sum([(dict_contacts[age, (contact_key_dict[int_age])]) for int_age in all_first_key])
+        dict_sum_contacts[age] = child_contacts
+    for age in adult_ages:
+        # sum contacts
+        adult_contacts = sum([(dict_contacts[age, (contact_key_dict[int_age])]) for int_age in all_first_key])
+        dict_sum_contacts[age] = adult_contacts
+    
+    # calc weighted average of child contacts across the three child groups    
+    contacts_child = sum([((dict_sum_contacts[(contact_key_dict[int_age])]) * (dict_germ_pop[(pop_key_dict[int_age])])) for int_age in child_first_key])
+    child_pop = sum([dict_germ_pop[pop_age] for pop_age in child_keys])
+    weighted_avg = (contacts_child / child_pop)   
+    q_c = weighted_avg
+    
+    # calc weighted average of child contacts across the three child groups
+    contacts_adult = sum([((dict_sum_contacts[(contact_key_dict[int_age])]) * (dict_germ_pop[(pop_key_dict[int_age])])) for int_age in adult_first_key])
+    adult_pop = sum([dict_germ_pop[pop_age] for pop_age in adult_keys])
+    weighted_avg = (contacts_adult / adult_pop)   
+    q_a = weighted_avg
+      
+    return q_c, q_a
+    
+###################################################
+def calc_p (filename_germ_within_group_contact_data, filename_germ_pop_data, filename_germ_all_contact_data):
     
     C_cc, C_aa, child_pop, adult_pop = aggregate_within_group_contacts(filename_germ_within_group_contact_data, filename_germ_pop_data)
     
@@ -364,8 +402,10 @@ def calc_p (filename_germ_within_group_contact_data, filename_germ_pop_data):
     adult = age[3:8]
     
     #calc avg # of contacts for each age group
-    q_c = weighted_avg_q(child)
-    q_a = weighted_avg_q(adult)
+    #q_c = weighted_avg_q(child)
+    #q_a = weighted_avg_q(adult)
+    
+    q_c, q_a = calc_q(filename_germ_all_contact_data, filename_germ_pop_data)
     
     p_c = C_cc / q_c
     p_a = C_aa / q_a
@@ -435,10 +475,11 @@ def calc_contact_matrix (filename_germ_contact_data, filename_germ_pop_data, a):
     child = age[0:3]
     adult = age[3:8]
 
-    #calc avg # of contacts for each age group
+    #calc avg # of contacts for each age group from polymod avg survey data
     q_c = weighted_avg_q(child)
     q_a = weighted_avg_q(adult)
     
+
     #calc ratio of avg # of contacts
     n = calc_eta(q_c, q_a)
     
@@ -486,6 +527,7 @@ if __name__ == "__main__":
     filename_metropop = 'Dropbox/Anne_Bansal_lab/Python_Scripts/Modeling_Project/air_traffic_data/metedges.txt'
     filename_germ_contact_data = 'Dropbox/Anne_Bansal_lab/Contact_Data/polymod_germany_contact_matrix_Mossong_2008.csv'
     filename_germ_within_group_contact_data = 'Dropbox/Anne_Bansal_lab/Contact_Data/within_group_polymod_germany_contact_matrix_Mossong_2008.csv'
+    filename_germ_all_contact_data = 'Dropbox/Anne_Bansal_lab/Contact_Data/all_ages_polymod_germany_contact_matrix_Mossong_2008.csv'
     filename_germ_pop_data = 'Dropbox/Anne_Bansal_lab/UNdata_Export_2008_Germany_Population.csv'
     
     us_popdata = csv.reader(open('Dropbox/Anne_Bansal_lab/SDI_Data/totalpop_age.csv', 'r'),delimiter = ',')
@@ -502,7 +544,7 @@ if __name__ == "__main__":
     
     a = calc_alpha(year, dict_childpop, dict_adultpop)
     print a
-    q_c, q_a, p_c, p_a, C_cc, C_aa = calc_p(filename_germ_within_group_contact_data, filename_germ_pop_data)
+    q_c, q_a, p_c, p_a, C_cc, C_aa = calc_p(filename_germ_within_group_contact_data, filename_germ_pop_data, filename_germ_all_contact_data)
     print q_c
     print q_a
     print p_c
