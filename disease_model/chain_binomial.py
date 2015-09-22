@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import csv
 import sys
+import operator
 
 ### local modules ###
 sys.path.append('/home/anne/Dropbox/Anne_Bansal_Lab')
@@ -393,6 +394,8 @@ def chain_binomial_one_simulation(d_metro_age_pop, metro_ids, beta, gamma, air_n
         # travel again
         # S --> I --> R
         
+        
+        
     # Note num_newly_infected is the incidence time series      
     return d_new_cases_child, d_new_cases_adult, d_metro_infected_child, d_metro_infected_adult, d_metro_tot_infected_child, d_metro_tot_infected_adult, sum(d_tot_new_cases_child.values()), sum(d_tot_new_cases_adult.values()) # return total number infected in outbreak
 
@@ -422,6 +425,11 @@ def chain_binomial_monte_carlo(beta, gamma, num_sims, num_metro_zeros, num_child
 
         # call it a large epidemic and save its size
         large_epidemic_sizes.append(outbreak_size)
+        
+        #output - plot for each sim
+        plot_new_cases(metro_ids, time_end, new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, sim)
+        plot_current_cases(metro_ids, time_end, incidence_time_series_metro_child, incidence_time_series_metro_adult, sim)
+        write_csv_file(incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, sim)
             
     # calculate average large epidemic size, and how frequent they were
     if large_epidemic_sizes:
@@ -471,22 +479,26 @@ def read_edgelist_anne (filename):
 #    return beta
 
 ####################################################
-#def write_csv_file(incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult):
-#    
-#    #time_series = range(0, time_end)
-#    csvfile = csv.writer(open('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/chain_binomial_output_nummetrozeros_%_numchildzeros_%_numadultzeros_%_numsims_%.csv' % (num_metro_zeros, num_child_zeros, num_adult_zeros, num_sims), 'wb'), delimiter = ',')
-#    csvfile.writerow(['time_step', 'metro_id', 'age', 'currently_infected', 'total_infected'])
-#    for (met_id, time_step) in incidence_time_series_metro_child:
-#        csvfile.writerow([time_step, met_id, 'C', (incidence_time_series_metro_child[(met_id, time_step)]), (tot_incidence_time_series_child[(met_id, time_step)])])
-#    for (met_id, time_step) in incidence_time_series_metro_adult:
-#        csvfile.writerow([time_step, met_id, 'A', (incidence_time_series_metro_adult[(met_id, time_step)]), (tot_incidence_time_series_adult[(met_id, time_step)])])
+def write_csv_file(incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, sim):
+    
+    #time_series = range(0, time_end)
+    csvfile = csv.writer(open('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/chain_binomial_output_nummetrozeros_%s_numchildzeros_%s_numadultzeros_%s_numsims_%s.csv' % (num_metro_zeros, num_child_zeros, num_adult_zeros, num_sims), 'wb'), delimiter = ',')
+    csvfile.writerow(['sim', 'time_step', 'metro_id', 'age', 'currently_infected', 'total_infected'])
+    list_tuples = []
+    for (met_id, time_step) in incidence_time_series_metro_child:
+        list_tuples.append((met_id, time_step))
+    sort_list_tuples = sorted(list_tuples, key=operator.itemgetter(1))
+    for (met_id, time_step) in sort_list_tuples:
+        csvfile.writerow([sim, time_step, met_id, 'C', (incidence_time_series_metro_child[(met_id, time_step)]), (tot_incidence_time_series_child[(met_id, time_step)])])
+    for (met_id, time_step) in sort_list_tuples:
+        csvfile.writerow([sim, time_step, met_id, 'A', (incidence_time_series_metro_adult[(met_id, time_step)]), (tot_incidence_time_series_adult[(met_id, time_step)])])
 
 ###################################################
-def plot_new_cases (metro_ids, time_end, d_new_cases_child, d_new_cases_adult):
+def plot_new_cases (metro_ids, time_end, d_new_cases_child, d_new_cases_adult, sim_number):
 # print out time series of new cases at each time step
 # one line for each metro area
 # one plot for child, one for adult
-
+        
 # child
     for met_id in metro_ids:
         time_series = range(0, time_end)
@@ -500,7 +512,7 @@ def plot_new_cases (metro_ids, time_end, d_new_cases_child, d_new_cases_adult):
     plt.ylabel('New Cases - Child')
     #plt.xticks(range(0, 10), wklab)
     #plt.show()
-    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Diagnostic_Plots/New_Cases/chain_binomial_new_cases_child.png')
+    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Diagnostic_Plots/New_Cases/chain_binomial_new_cases_child_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_sim_%s.png' % (alpha, ch_travelers_r, R0, gamma, beta, sim_number))
     plt.close()
 
 #might need separate for adult
@@ -517,16 +529,17 @@ def plot_new_cases (metro_ids, time_end, d_new_cases_child, d_new_cases_adult):
     plt.ylabel('New Cases - Adult')
     #plt.xticks(range(0, 10), wklab)
     #plt.show()
-    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Diagnostic_Plots/New_Cases/chain_binomial_new_cases_adult.png')
+    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Diagnostic_Plots/New_Cases/chain_binomial_new_cases_adult_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_sim_%s.png' % (alpha, ch_travelers_r, R0, gamma, beta, sim_number))
     plt.close()
          
 
 ###################################################
-def plot_current_cases(metro_ids, time_end, d_metro_infected_child, d_metro_infected_adult):
+def plot_current_cases(metro_ids, time_end, d_metro_infected_child, d_metro_infected_adult, sim_number):
 # time series for currently infected cases
 # one plot for child one for adult
 # one line for each metro area
 
+    
 # child
     for met_id in metro_ids:
         time_series = range(0, time_end)
@@ -540,7 +553,7 @@ def plot_current_cases(metro_ids, time_end, d_metro_infected_child, d_metro_infe
     plt.ylabel('Current Cases - Child')
     #plt.xticks(range(0, 10), wklab)
     #plt.show()
-    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Diagnostic_Plots/Current_Cases/chain_binomial_current_cases_child.png')
+    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Diagnostic_Plots/Current_Cases/chain_binomial_current_cases_child_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_sim_%s.png' % (alpha, ch_travelers_r, R0, gamma, beta, sim_number))
     plt.close()
 
 #adult
@@ -556,7 +569,7 @@ def plot_current_cases(metro_ids, time_end, d_metro_infected_child, d_metro_infe
     plt.ylabel('Current Cases - Adult')
     #plt.xticks(range(0, 10), wklab)
     #plt.show()
-    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Diagnostic_Plots/Current_Cases/chain_binomial_current_cases_adult.png')
+    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Diagnostic_Plots/Current_Cases/chain_binomial_current_cases_adult_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_sim_%s.png' % (alpha, ch_travelers_r, R0, gamma, beta, sim_number))
     plt.close()
 
     
@@ -574,7 +587,10 @@ if __name__ == "__main__":
     dict_popdata, ages, years = pop_func.import_popdata(us_popdata, 0, 1, 2)
     dict_childpop, dict_adultpop = pop_func.pop_child_adult (dict_popdata, years)
     # READ Germany contact data
-    filename_germ_contact_data = 'Dropbox/Anne_Bansal_lab/Contact_Data/polymod_germany_contact_matrix_Mossong_2008.csv'
+    #filename_germ_contact_data = 'Dropbox/Anne_Bansal_lab/Contact_Data/polymod_germany_contact_matrix_Mossong_2008.csv'
+    filename_germ_within_group_contact_data = 'Dropbox/Anne_Bansal_lab/Contact_Data/within_group_polymod_germany_contact_matrix_Mossong_2008.csv'
+    filename_germ_all_contact_data = 'Dropbox/Anne_Bansal_lab/Contact_Data/all_ages_polymod_germany_contact_matrix_Mossong_2008.csv'
+    # READ Germany population data
     filename_germ_pop_data = 'Dropbox/Anne_Bansal_lab/UNdata_Export_2008_Germany_Population.csv'
         
     # DEFINE POPULATION PARAMETERS
@@ -585,12 +601,14 @@ if __name__ == "__main__":
     ad_travelers_s = 1
     
     # CONTACT MATRIX
-    C = pop_func.calc_contact_matrix(filename_germ_contact_data, filename_germ_pop_data, alpha)
+    q_c, q_a, p_c, p_a, _, _ = pop_func.calc_p(filename_germ_within_group_contact_data, filename_germ_pop_data, filename_germ_all_contact_data)
+    C = pop_func.calc_contact_matrix_pqa(p_c, p_a, q_c, q_a, alpha)
     #print C
                             
     # DEFINE DISEASE PARAMETERS
     R0 = 1.2
     gamma = 0.5 # recovery rate based on (1/gamma) day infectious period
+    beta = 0.037
     #beta = calculate_beta(R0, gamma, air_network)
     #beta = 0
     #beta = 0.037 #gamma 0.5
@@ -615,5 +633,5 @@ if __name__ == "__main__":
     new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, outbreak_size_child, outbreak_size_adult = chain_binomial_one_simulation(d_metro_age_pop, metro_ids, beta, gamma, air_network, num_metro_zeros, num_child_zeros, num_adult_zeros, C)	
     #write_csv_file(incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult)
     #PLOT
-    plot_new_cases(metro_ids, time_end, new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult)
-    plot_current_cases(metro_ids, time_end, incidence_time_series_metro_child, incidence_time_series_metro_adult)
+    #plot_new_cases(metro_ids, time_end, new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult)
+    #plot_current_cases(metro_ids, time_end, incidence_time_series_metro_child, incidence_time_series_metro_adult)

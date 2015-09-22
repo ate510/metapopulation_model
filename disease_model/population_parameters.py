@@ -321,24 +321,8 @@ def contacts_per_agegroup ():
     d_num_part = dict(zip(age, participants))
     
     return d_mean_contacts, d_num_part
-    
-###################################################
-#def calc_p ():
-#    
-#    #import data for same age contacts
-#    germ_contact_sameage_data = csv.reader(open('Dropbox/Anne_Bansal_lab/Contact_Data/same_age_polymod_germany_contact_matrix_Mossong_2008.csv', 'r'),delimiter = ',')
-#    headers = germ_contact_sameage_data.next()
-#    
-#    dict_sameage_contacts, ages = import_sameage_contact_matrix(germ_contact_sameage_data, 0, 1)
-#    
-#    for age in ages:
-#        
-#        pxN = [(dict_sameage_contacts[age] * dict_age_pop[age]) for age in ages]
-#    
-#    return p_child, p_adult
 
-
-###################################################    
+####################################################    
 def weighted_avg_q (age_list):
 # calc avg q value (avg # of contacts) for one age group
     # from POLYMOD table 1 mean number of contacts for age group
