@@ -365,8 +365,8 @@ def chain_binomial_one_simulation(d_metro_age_pop, metro_ids, beta, gamma, air_n
             # determine how many are infected (coin flip 'Susc_C' number of times, with probability 'prob' each flip will result in infected)
             new_cases_child = np.random.binomial(Susc_C, prob) # determine how many are infected
             d_new_cases_child[(met_id, time_step)] = new_cases_child
-            previous_time_steps = range(0, time_step)
-            previous_cases = sum([d_metro_tot_infected_child[(met_id, time)] for time in previous_time_steps])
+            previous_time_step = (time_step - 1)
+            previous_cases = d_metro_tot_infected_child[(met_id, previous_time_step)]
             d_metro_tot_infected_child[(met_id, time_step)] = previous_cases + new_cases_child
                          
             #adult
@@ -374,8 +374,8 @@ def chain_binomial_one_simulation(d_metro_age_pop, metro_ids, beta, gamma, air_n
             prob = susc_infc_binomial_prob_adult(met_id, d_Infc, C, beta) # calc probability of infection
             new_cases_adult = np.random.binomial(Susc_A, prob) 
             d_new_cases_adult[(met_id, time_step)] = new_cases_adult
-            previous_time_steps = range(0, time_step)
-            previous_cases = sum([d_metro_tot_infected_adult[(met_id, time)] for time in previous_time_steps])
+            previous_time_step = (time_step - 1)
+            previous_cases = d_metro_tot_infected_adult[(met_id, previous_time_step)]
             d_metro_tot_infected_adult[(met_id, time_step)] = previous_cases + new_cases_adult
             #don't sum over total all time steps - either grab time-1 or sum over new cases
                     
@@ -679,9 +679,9 @@ if __name__ == "__main__":
     # DEFINE DISEASE PARAMETERS
     R0 = 1.2
     gamma = 0.5 # recovery rate based on (1/gamma) day infectious period
-    test_gammas = [0.2, 0.3, 0.4, 0.5]
+    test_gammas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
     beta = 0.037
-    test_betas = [0.005, 0.015, 0.025, 0.035, 0.045]
+    test_betas = [0.005, 0.015, 0.025, 0.035, 0.045, 0.055, 0.065]
     #beta = calculate_beta(R0, gamma, air_network)
     #beta = 0
     #beta = 0.037 #gamma 0.5
@@ -698,7 +698,7 @@ if __name__ == "__main__":
     
     # RUN EPIDEMIC SIMULATIONS
     #num_sims = 250 # if debugging, reduce this number to something small like 10
-    num_sims = 2
+    num_sims = 100
     average_epidemic_size = chain_binomial_monte_carlo(beta, gamma, num_sims, num_metro_zeros, num_child_zeros, num_adult_zeros)
     
     # UNIT TESTS
