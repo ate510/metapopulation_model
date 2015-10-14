@@ -50,7 +50,7 @@ def import_sim_data (filename, simcol, timecol, metrocol, agecol, totcol):
 ###################################################
 def infc_final_size (time_list, dict_age_infc):
     
-    final_time_step = (time_list[-1])
+    final_time_step = ((sorted(time_list))[-1])
     dict_final_infc = {}
     for (sim, time_step, metro_id, age) in dict_age_infc:
     #for time_step in time_list:
