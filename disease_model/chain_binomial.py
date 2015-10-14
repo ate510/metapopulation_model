@@ -273,7 +273,7 @@ def travel_btwn_metros(air_network, d_Susc, d_Infc, d_Recv, d_prob_travel_C, d_p
         
         
 ###################################################
-def chain_binomial_one_simulation(sim, d_metro_age_pop, d_metropop, metro_ids, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, air_network, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, C):
+def chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult, d_metro_tot_infected_child, d_metro_tot_infected_adult, sim, d_metro_age_pop, d_metropop, metro_ids, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, air_network, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, C):
 # given a per contact, per time step tranmssion probability (beta) and
 #  a per time step recovery probability (gamma), use the SIR chain binomial
 #  model to simulate ONE outbreak on the population (provided by contact_network)
@@ -286,10 +286,8 @@ def chain_binomial_one_simulation(sim, d_metro_age_pop, d_metropop, metro_ids, b
     time_step = 0 # clock counter keeping track of current time
     d_nat_infected_child, d_nat_infected_adult = {}, {} # this dictionary will keep track of how many infected in current time step
     #record number currently infected at each metro at each time step
-    d_metro_infected_child, d_metro_infected_adult = {}, {}
-    #record number total infected at each metro area
-    d_metro_tot_infected_child, d_metro_tot_infected_adult = {}, {}
-    # record only new cases at each time step and each metro
+
+
     d_new_cases_child, d_new_cases_adult = {}, {}
     # record new cases for each time step (agg over metro areas)
     d_tot_new_cases_child, d_tot_new_cases_adult = {}, {}
@@ -301,8 +299,8 @@ def chain_binomial_one_simulation(sim, d_metro_age_pop, d_metropop, metro_ids, b
         update_SI(sim, met_id, d_Susc, d_Infc, num_child_zeros, num_adult_zeros, d_metro_infected_child, d_metro_infected_adult, time_step)
         num_infc_child = d_Infc[(met_id, 'C')]
         num_infc_adult = d_Infc[(met_id, 'A')]
-        d_metro_tot_infected_child[(met_id, time_step)] = num_infc_child
-        d_metro_tot_infected_adult[(met_id, time_step)] = num_infc_adult
+        d_metro_tot_infected_child[(sim, met_id, time_step)] = num_infc_child
+        d_metro_tot_infected_adult[(sim, met_id, time_step)] = num_infc_adult
         d_new_cases_child[(met_id, time_step)] = num_infc_child
         d_new_cases_adult[(met_id, time_step)] = num_infc_adult
        
@@ -310,8 +308,8 @@ def chain_binomial_one_simulation(sim, d_metro_age_pop, d_metropop, metro_ids, b
     for met_id in metros_not_zeros:
         d_metro_infected_child[(sim, met_id, time_step)] = 0
         d_metro_infected_adult[(sim, met_id, time_step)] = 0
-        d_metro_tot_infected_child[(met_id, time_step)] = 0
-        d_metro_tot_infected_adult[(met_id, time_step)] = 0
+        d_metro_tot_infected_child[(sim, met_id, time_step)] = 0
+        d_metro_tot_infected_adult[(sim, met_id, time_step)] = 0
         d_new_cases_child[(met_id, time_step)] = 0
         d_new_cases_adult[(met_id, time_step)] = 0
     
@@ -364,8 +362,8 @@ def chain_binomial_one_simulation(sim, d_metro_age_pop, d_metropop, metro_ids, b
             new_cases_child = np.random.binomial(Susc_C, prob) # determine how many are infected
             d_new_cases_child[(met_id, time_step)] = new_cases_child
             previous_time_step = (time_step - 1)
-            previous_cases = d_metro_tot_infected_child[(met_id, previous_time_step)]
-            d_metro_tot_infected_child[(met_id, time_step)] = previous_cases + new_cases_child
+            previous_cases = d_metro_tot_infected_child[(sim, met_id, previous_time_step)]
+            d_metro_tot_infected_child[(sim, met_id, time_step)] = previous_cases + new_cases_child
                          
             #adult
             Susc_A = d_Susc[(met_id, 'A')] # number of susc adults in metro area
@@ -373,8 +371,8 @@ def chain_binomial_one_simulation(sim, d_metro_age_pop, d_metropop, metro_ids, b
             new_cases_adult = np.random.binomial(Susc_A, prob) 
             d_new_cases_adult[(met_id, time_step)] = new_cases_adult
             previous_time_step = (time_step - 1)
-            previous_cases = d_metro_tot_infected_adult[(met_id, previous_time_step)]
-            d_metro_tot_infected_adult[(met_id, time_step)] = previous_cases + new_cases_adult
+            previous_cases = d_metro_tot_infected_adult[(sim, met_id, previous_time_step)]
+            d_metro_tot_infected_adult[(sim, met_id, time_step)] = previous_cases + new_cases_adult
             #don't sum over total all time steps - either grab time-1 or sum over new cases
                     
             #subtract from Si, add to Ii
@@ -402,6 +400,11 @@ def chain_binomial_one_simulation(sim, d_metro_age_pop, d_metropop, metro_ids, b
 def chain_binomial_monte_carlo(R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_sims, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, air_network, ch_travelers_r, ad_travelers_s, C):
 # run many (num_sims) instances of chain binomial simulation and return average epidemic size    
 
+    d_metro_infected_child, d_metro_infected_adult = {}, {}
+    #record number total infected at each metro area
+    d_metro_tot_infected_child, d_metro_tot_infected_adult = {}, {}
+    # record previous new cases plus current new cases at each time step and each metro
+    
     #d_metropop, metro_ids = pop_func.import_metropop(filename_metropop, 2, 3)
     population_size = sum([d_metropop[x] for x in metro_ids])
     threshold = 0.10 # 10% of population size is our threshold for a large epidemic
@@ -410,10 +413,8 @@ def chain_binomial_monte_carlo(R0, beta, gamma, alpha, theta_susc, theta_infc, t
 
     large_epidemic_sizes= [] # will keep list of outbreak sizes that are large epidemics
     for sim in range(num_sims):
-        #incidence_time_series, outbreak_size = chain_binomial_one_simulation(d_metro_age_pop, d_metropop, metro_ids, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, air_network, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, C)
-        # Note we are not using the incidence time series right now
-        
-        new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, outbreak_size_child, outbreak_size_adult = chain_binomial_one_simulation(sim, d_metro_age_pop, d_metropop, metro_ids, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, air_network, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, C)
+
+        new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, outbreak_size_child, outbreak_size_adult = chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult, d_metro_tot_infected_child, d_metro_tot_infected_adult, sim, d_metro_age_pop, d_metropop, metro_ids, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, air_network, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, C)
 
         outbreak_size = (outbreak_size_child + outbreak_size_adult)
         
@@ -432,7 +433,8 @@ def chain_binomial_monte_carlo(R0, beta, gamma, alpha, theta_susc, theta_infc, t
     # calculate average large epidemic size, and how frequent they were
     if large_epidemic_sizes:
         average_epidemic_size = np.mean(large_epidemic_sizes)/float(population_size)
-        standard_deviation = np.std(large_epidemic_sizes)
+        epi_size_fractions = [x / float(population_size) for x in large_epidemic_sizes] #divide cases by pop to get percent of pop infected
+        standard_deviation = np.std(epi_size_fractions)
         probability_epidemic = len(large_epidemic_sizes)/float(num_sims)
     else:
         average_epidemic_size = 0
@@ -445,6 +447,11 @@ def chain_binomial_monte_carlo(R0, beta, gamma, alpha, theta_susc, theta_infc, t
 def chain_binomial_monte_carlo_plots_csv(R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_sims, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, air_network, ch_travelers_r, ad_travelers_s, C):
 # run many (num_sims) instances of chain binomial simulation and return average epidemic size    
 
+    d_metro_infected_child, d_metro_infected_adult = {}, {}
+    #record number total infected at each metro area
+    d_metro_tot_infected_child, d_metro_tot_infected_adult = {}, {}
+    # record previous new cases plus current new cases at each time step and each metro
+    
     #d_metropop, metro_ids = pop_func.import_metropop(filename_metropop, 2, 3)
     population_size = sum([d_metropop[x] for x in metro_ids])
     threshold = 0.10 # 10% of population size is our threshold for a large epidemic
@@ -453,10 +460,8 @@ def chain_binomial_monte_carlo_plots_csv(R0, beta, gamma, alpha, theta_susc, the
 
     large_epidemic_sizes= [] # will keep list of outbreak sizes that are large epidemics
     for sim in range(num_sims):
-        #incidence_time_series, outbreak_size = chain_binomial_one_simulation(sim, d_metro_age_pop, d_metropop, metro_ids, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, air_network, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, C)
-        # Note we are not using the incidence time series right now
         
-        new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, outbreak_size_child, outbreak_size_adult = chain_binomial_one_simulation(sim, d_metro_age_pop, d_metropop, metro_ids, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, air_network, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, C)
+        new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, outbreak_size_child, outbreak_size_adult = chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult, d_metro_tot_infected_child, d_metro_tot_infected_adult, sim, d_metro_age_pop, d_metropop, metro_ids, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, air_network, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, C)
         
         #d_sim[sim] = incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult
         
@@ -489,6 +494,11 @@ def chain_binomial_monte_carlo_plots_csv(R0, beta, gamma, alpha, theta_susc, the
 def chain_binomial_monte_carlo_unit_tests(unit_test, R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_sims, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, air_network, ch_travelers_r, ad_travelers_s, C):
 # run many (num_sims) instances of chain binomial simulation and return average epidemic size    
 
+    d_metro_infected_child, d_metro_infected_adult = {}, {}
+    #record number total infected at each metro area
+    d_metro_tot_infected_child, d_metro_tot_infected_adult = {}, {}
+    # record previous new cases plus current new cases at each time step and each metro
+    
     #d_metropop, metro_ids = pop_func.import_metropop(filename_metropop, 2, 3)
     population_size = sum([d_metropop[x] for x in metro_ids])
     threshold = 0.10 # 10% of population size is our threshold for a large epidemic
@@ -497,10 +507,8 @@ def chain_binomial_monte_carlo_unit_tests(unit_test, R0, beta, gamma, alpha, the
 
     large_epidemic_sizes= [] # will keep list of outbreak sizes that are large epidemics
     for sim in range(num_sims):
-        #incidence_time_series, outbreak_size = chain_binomial_one_simulation(sim, d_metro_age_pop, d_metropop, metro_ids, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, air_network, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, C)
-        # Note we are not using the incidence time series right now
-        
-        new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, outbreak_size_child, outbreak_size_adult = chain_binomial_one_simulation(sim, d_metro_age_pop, d_metropop, metro_ids, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, air_network, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, C)
+
+        new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, outbreak_size_child, outbreak_size_adult = chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult, d_metro_tot_infected_child, d_metro_tot_infected_adult, sim, d_metro_age_pop, d_metropop, metro_ids, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, air_network, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, C)
 
         outbreak_size = (outbreak_size_child + outbreak_size_adult)
         
@@ -532,6 +540,11 @@ def chain_binomial_monte_carlo_unit_tests(unit_test, R0, beta, gamma, alpha, the
 def chain_binomial_monte_carlo_unit_tests_no_plot(unit_test, R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_sims, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, air_network, ch_travelers_r, ad_travelers_s, C):
 # run many (num_sims) instances of chain binomial simulation and return average epidemic size    
 
+    d_metro_infected_child, d_metro_infected_adult = {}, {}
+    #record number total infected at each metro area
+    d_metro_tot_infected_child, d_metro_tot_infected_adult = {}, {}
+    # record previous new cases plus current new cases at each time step and each metro
+    
     #d_metropop, metro_ids = pop_func.import_metropop(filename_metropop, 2, 3)
     population_size = sum([d_metropop[x] for x in metro_ids])
     threshold = 0.10 # 10% of population size is our threshold for a large epidemic
@@ -540,10 +553,10 @@ def chain_binomial_monte_carlo_unit_tests_no_plot(unit_test, R0, beta, gamma, al
 
     large_epidemic_sizes= [] # will keep list of outbreak sizes that are large epidemics
     for sim in range(num_sims):
-        #incidence_time_series, outbreak_size = chain_binomial_one_simulation(sim, d_metro_age_pop, d_metropop, metro_ids, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, air_network, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, C)
+        #incidence_time_series, outbreak_size = chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult, d_metro_tot_infected_child, d_metro_tot_infected_adult, sim, d_metro_age_pop, d_metropop, metro_ids, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, air_network, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, C)
         # Note we are not using the incidence time series right now
         
-        new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, outbreak_size_child, outbreak_size_adult = chain_binomial_one_simulation(sim, d_metro_age_pop, d_metropop, metro_ids, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, air_network, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, C)
+        new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, outbreak_size_child, outbreak_size_adult = chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult, d_metro_tot_infected_child, d_metro_tot_infected_adult, sim, d_metro_age_pop, d_metropop, metro_ids, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, air_network, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, C)
         print outbreak_size_child
         print outbreak_size_adult
         outbreak_size = (outbreak_size_child + outbreak_size_adult)
@@ -620,9 +633,9 @@ def write_csv_file(incidence_time_series_metro_child, incidence_time_series_metr
     sort_by_time_list_tuples = sorted(list_tuples, key=operator.itemgetter(2))
     sort_by_sim_list_tuples = sorted(sort_by_time_list_tuples, key=operator.itemgetter(0))
     for (sim, met_id, time_step) in sort_by_sim_list_tuples:
-        csvfile.writerow([sim, time_step, met_id, 'C', (incidence_time_series_metro_child[(sim, met_id, time_step)])]) #, (tot_incidence_time_series_child[(sim, met_id, time_step)])
+        csvfile.writerow([sim, time_step, met_id, 'C', (incidence_time_series_metro_child[(sim, met_id, time_step)]), (tot_incidence_time_series_child[(sim, met_id, time_step)])])
     for (sim, met_id, time_step) in sort_by_sim_list_tuples:
-        csvfile.writerow([sim, time_step, met_id, 'A', (incidence_time_series_metro_adult[(sim, met_id, time_step)])]) #, (tot_incidence_time_series_adult[(sim, met_id, time_step)])
+        csvfile.writerow([sim, time_step, met_id, 'A', (incidence_time_series_metro_adult[(sim, met_id, time_step)]), (tot_incidence_time_series_adult[(sim, met_id, time_step)])])
 
 ###################################################
 def plot_new_cases (metro_ids, time_end, d_new_cases_child, d_new_cases_adult, sim_number, alpha, ch_travelers_r, R0, gamma, beta):
@@ -643,7 +656,7 @@ def plot_new_cases (metro_ids, time_end, d_new_cases_child, d_new_cases_adult, s
     plt.ylabel('New Cases - Child')
     #plt.xticks(range(0, 10), wklab)
     #plt.show()
-    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Diagnostic_Plots/New_Cases/chain_binomial_new_cases_child_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_sim_%s.png' % (alpha, ch_travelers_r, R0, gamma, beta, sim_number))
+    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Diagnostic_Plots/New_Cases/Zoomed/chain_binomial_new_cases_child_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_sim_%s.png' % (alpha, ch_travelers_r, R0, gamma, beta, sim_number))
     plt.close()
 
 #might need separate for adult
@@ -654,13 +667,13 @@ def plot_new_cases (metro_ids, time_end, d_new_cases_child, d_new_cases_adult, s
         graphyax = [d_new_cases_adult[(met_id, time_step)] for time_step in time_series]
         plt.plot(graphxax, graphyax)
         
-    #plt.xlim([0, 9])
+    plt.xlim([0, 40])
     #plt.ylim([0, 1000000])
     plt.xlabel('Time Step')
     plt.ylabel('New Cases - Adult')
     #plt.xticks(range(0, 10), wklab)
     #plt.show()
-    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Diagnostic_Plots/New_Cases/chain_binomial_new_cases_adult_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_sim_%s.png' % (alpha, ch_travelers_r, R0, gamma, beta, sim_number))
+    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Diagnostic_Plots/New_Cases/Zoomed/chain_binomial_new_cases_adult_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_sim_%s.png' % (alpha, ch_travelers_r, R0, gamma, beta, sim_number))
     plt.close()
          
 
@@ -684,7 +697,7 @@ def plot_current_cases(sim, metro_ids, time_end, d_metro_infected_child, d_metro
     plt.ylabel('Current Cases - Child')
     #plt.xticks(range(0, 10), wklab)
     #plt.show()
-    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Diagnostic_Plots/Current_Cases/chain_binomial_current_cases_child_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_sim_%s.png' % (alpha, ch_travelers_r, R0, gamma, beta, sim_number))
+    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Diagnostic_Plots/Current_Cases/Zoomed/chain_binomial_current_cases_child_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_sim_%s.png' % (alpha, ch_travelers_r, R0, gamma, beta, sim_number))
     plt.close()
 
 #adult
@@ -694,13 +707,13 @@ def plot_current_cases(sim, metro_ids, time_end, d_metro_infected_child, d_metro
         graphyax = [d_metro_infected_adult[(sim, met_id, time_step)] for time_step in time_series]
         plt.plot(graphxax, graphyax)
         
-    #plt.xlim([0, 9])
+    plt.xlim([0, 40])
     #plt.ylim([0, 1000])
     plt.xlabel('Time Step')
     plt.ylabel('Current Cases - Adult')
     #plt.xticks(range(0, 10), wklab)
     #plt.show()
-    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Diagnostic_Plots/Current_Cases/chain_binomial_current_cases_adult_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_sim_%s.png' % (alpha, ch_travelers_r, R0, gamma, beta, sim_number))
+    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Diagnostic_Plots/Current_Cases/Zoomed/chain_binomial_current_cases_adult_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_sim_%s.png' % (alpha, ch_travelers_r, R0, gamma, beta, sim_number))
     plt.close()
 
 ###################################################
@@ -754,6 +767,7 @@ def beta_test (betas, gamma, R0, alpha, theta_susc, theta_infc, theta_recv, time
         
     graphxax = betas
     graphyax = [d_epi_size[(beta)] for beta in betas]
+    print graphyax
     yerr = [d_epi_size_std[(beta)] for beta in betas]
     print yerr
     plt.errorbar(graphxax, graphyax, yerr=yerr)
@@ -839,9 +853,9 @@ if __name__ == "__main__":
     
     # RUN EPIDEMIC SIMULATIONS
     #num_sims = 250 # if debugging, reduce this number to something small like 10
-    num_sims = 5
+    num_sims = 100
     average_epidemic_size, std_dev, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult = chain_binomial_monte_carlo(R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_sims, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, air_network, ch_travelers_r, ad_travelers_s, C)
-    print incidence_time_series_metro_child
+    #print incidence_time_series_metro_child
     
     # UNIT TESTS
     #plot beta values v. avg epi size
