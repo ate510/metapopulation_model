@@ -30,6 +30,7 @@ def infected_contact_adult(C, Infc_A, Infc_C):
     C_aa = C.item((1, 1))
 
     return ((C_ac*Infc_C)+(C_aa*Infc_A))
+    #call this function in a larger one with population sizes
     
 ###################################################    
 def susc_infc_event_child(infected_contact_child, beta):
@@ -37,6 +38,7 @@ def susc_infc_event_child(infected_contact_child, beta):
 
     #return (rnd.random() < (1-np.exp(-beta*infected_contact_child)))
     return (1-np.exp(-beta*infected_contact_child))
+    #multiply force of infection (lambda) by number of susceptibles 
 
 ###################################################    
 def susc_infc_event_adult(infected_contact_adult, beta):
@@ -158,6 +160,7 @@ def travel_btwn_metros(air_network, d_Susc, d_Infc, d_Recv, d_prob_travel_C, d_p
         ch_susc_prob_i_j = ((d_prob_travel_C[(i, j)]) * (theta_susc)) # binomial probability
         # select number of children who travel
         ch_travel_i_j = np.random.binomial(ch_susc_i, ch_susc_prob_i_j) 
+        # multiply ch_susc_i by prob = number of children travel from i to j
         
         # travel metro j --> i
         ch_susc_j = (d_Susc[(j, 'C')])
@@ -350,6 +353,8 @@ def chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult
             Infc_A = d_Infc[(met_id, 'A')]
             prob = gamma
             new_recov_adult = np.random.binomial(Infc_A, prob)
+            # multiply Infc_A by prob = new_recov_adult
+            # don't round
             
             # subtract from Ii, add to Ri            
             update_IR(sim, met_id, d_Infc, d_Recv, new_recov_child, new_recov_adult, d_metro_infected_child, d_metro_infected_adult, time_step)
