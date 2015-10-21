@@ -323,6 +323,8 @@ def chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult
     num_infected = ((d_nat_infected_child[time_step]) + (d_nat_infected_adult[time_step])) 
     while num_infected > 0 and time_step < time_end:
         
+        print "time %s has %s child, %s adult, %s total infections" % (time_step, d_nat_infected_child[time_step], d_nat_infected_adult[time_step], num_infected)
+        
         time_step += 1 #update clock
     
         # TRAVEL #
@@ -383,6 +385,7 @@ def chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult
         num_infc_adult = sum([d_Infc[(met_id, 'A')] for met_id in metro_ids])
         d_nat_infected_child[(time_step)] = num_infc_child
         d_nat_infected_adult[(time_step)] = num_infc_adult
+        num_infected = ((d_nat_infected_child[time_step]) + (d_nat_infected_adult[time_step])) 
         d_tot_new_cases_adult[(time_step)] = sum([d_new_cases_adult[(met_id, time_step)] for met_id in metro_ids])
         d_tot_new_cases_child[(time_step)] = sum([d_new_cases_child[(met_id, time_step)] for met_id in metro_ids])        
         print d_tot_new_cases_child[(time_step)]
