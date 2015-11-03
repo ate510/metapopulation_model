@@ -72,6 +72,11 @@ theta_recv = 1
 #d_theta[(r)] = 1
 
 # RUN EPIDEMIC SIMULATIONS
-#num_sims = 250 # if debugging, reduce this number to something small like 10
-num_sims = 5
-average_epidemic_size = bin_func.chain_binomial_monte_carlo_unit_tests(unit_test, R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_sims, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, air_network, ch_travelers_r, ad_travelers_s, C) 
+#average_epidemic_size = bin_func.chain_binomial_monte_carlo_unit_tests(unit_test, R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, air_network, ch_travelers_r, ad_travelers_s, C)
+average_epidemic_size, adult_epi_size, child_epi_size, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult = bin_func.chain_binomial_monte_carlo_unit_tests_csv(R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, air_network, ch_travelers_r, ad_travelers_s, C)
+bin_func.write_csv_file(incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult)
+
+# OUTPUT AR
+print "\nAverage Large Epidemic Size = ", round(100*average_epidemic_size,2), '%.\n'
+print "\nAverage Adult Epidemic Size = ", round(100*adult_epi_size,2), '%.\n'
+print "\nAverage Child Epidemic Size = ", round(100*child_epi_size,2), '%.\n'
