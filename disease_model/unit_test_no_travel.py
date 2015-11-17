@@ -56,7 +56,7 @@ C = pop_func.calc_contact_matrix_pqa(p_c, p_a, q_c, q_a, alpha)
 # DEFINE DISEASE PARAMETERS
 R0 = 1.2
 gamma = 0.5 # recovery rate based on (1/gamma) day infectious period
-beta = 0.037
+beta = 0.029
 num_metro_zeros = 1 # set how many metros to select patients from to start with
 num_child_zeros = 1
 num_adult_zeros = 0
@@ -76,7 +76,7 @@ theta_recv = 1
 #average_epidemic_size, adult_epi_size, child_epi_size, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult = bin_func.chain_binomial_monte_carlo_unit_tests_csv(unit_test, R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, air_network, ch_travelers_r, ad_travelers_s, C)
 #TEST#
 average_epidemic_size, adult_epi_size, child_epi_size, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult = bin_func.chain_binomial_monte_carlo_unit_tests_csv_test(unit_test, R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, air_network, ch_travelers_r, ad_travelers_s, C)
-bin_func.write_csv_file_no_travel(num_metro_zeros, num_child_zeros, num_adult_zeros, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult)
+bin_func.write_csv_file_no_travel(num_metro_zeros, num_child_zeros, num_adult_zeros, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, beta)
 
 # OUTPUT AR
 print "\nAverage Large Epidemic Size = ", round(100*average_epidemic_size,2), '%.\n'
