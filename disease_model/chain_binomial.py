@@ -401,7 +401,7 @@ def chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult
         num_infected = ((d_nat_infected_child[time_step]) + (d_nat_infected_adult[time_step])) 
         d_tot_new_cases_adult[(time_step)] = sum([d_new_cases_adult[(met_id, time_step)] for met_id in metro_ids])
         d_tot_new_cases_child[(time_step)] = sum([d_new_cases_child[(met_id, time_step)] for met_id in metro_ids])        
-        print d_tot_new_cases_child[(time_step)]
+        #print d_tot_new_cases_child[(time_step)]
         # go back thru while loop
         # next time step
         # travel again
@@ -493,8 +493,8 @@ def chain_binomial_monte_carlo_plots_csv(R0, beta, gamma, alpha, theta_susc, the
         adult_epidemic_sizes.append(outbreak_size_adult)
         child_epidemic_sizes.append(outbreak_size_child)
         #output - plot for each sim
-        #plot_new_cases(metro_ids, time_end, new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, metro, alpha, ch_travelers_r, R0, gamma, beta)
-        #plot_current_cases(metro_ids, time_end, incidence_time_series_metro_child, incidence_time_series_metro_adult, metro, alpha, ch_travelers_r, R0, gamma, beta)
+        plot_new_cases(metro_ids, time_end, new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, metro, alpha, ch_travelers_r, R0, gamma, beta)
+        plot_current_cases(metro_ids, time_end, incidence_time_series_metro_child, incidence_time_series_metro_adult, metro, alpha, ch_travelers_r, R0, gamma, beta)
             
     # calculate average large epidemic size, and how frequent they were
     if large_epidemic_sizes:
@@ -508,13 +508,13 @@ def chain_binomial_monte_carlo_plots_csv(R0, beta, gamma, alpha, theta_susc, the
         
     # calculate average adult epi size
     if adult_epidemic_sizes:
-        avg_adult_epi_size = np.mean(adult_epidemic_sizes)/float(1-(population_size*alpha))
+        avg_adult_epi_size = np.mean(adult_epidemic_sizes)/float(population_size-(population_size*alpha)) # adult pop = total pop - child pop
     else:
         avg_adult_epi_size = 0
     
     # calculate average child epi size
     if child_epidemic_sizes:
-        avg_child_epi_size = np.mean(child_epidemic_sizes)/float(population_size*alpha)
+        avg_child_epi_size = np.mean(child_epidemic_sizes)/float(population_size*alpha) #child pop = alpha * total pop
     else:
         avg_child_epi_size = 0
     
@@ -796,10 +796,26 @@ def write_csv_file(incidence_time_series_metro_child, incidence_time_series_metr
         csvfile.writerow([met_zero, time_step, met_id, 'A', (incidence_time_series_metro_adult[(met_zero, met_id, time_step)]), (tot_incidence_time_series_adult[(met_zero, met_id, time_step)])])
 
 ####################################################
-def write_csv_file_no_travel(num_metro_zeros, num_child_zeros, num_adult_zeros, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult):
+def write_csv_file_no_travel(num_metro_zeros, num_child_zeros, num_adult_zeros, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, beta):
     
     #time_series = range(0, time_end)
-    csvfile = csv.writer(open('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Diagnostic_Plots/Unit_Tests/no_travel/chain_binomial_output_nummetrozeros_%s_numchildzeros_%s_numadultzeros_%s.csv' % (num_metro_zeros, num_child_zeros, num_adult_zeros), 'wb'), delimiter = ',')
+    csvfile = csv.writer(open('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Diagnostic_Plots/Unit_Tests/no_travel/chain_binomial_output_nummetrozeros_%s_numchildzeros_%s_numadultzeros_%s_beta_%s.csv' % (num_metro_zeros, num_child_zeros, num_adult_zeros, beta), 'wb'), delimiter = ',')
+    csvfile.writerow(['metro_zero', 'time_step', 'metro_id', 'age', 'currently_infected', 'total_infected'])
+    list_tuples = []
+    for (met_zero, met_id, time_step) in incidence_time_series_metro_child:
+        list_tuples.append((met_zero, met_id, time_step))
+    sort_by_time_list_tuples = sorted(list_tuples, key=operator.itemgetter(2))
+    sort_by_sim_list_tuples = sorted(sort_by_time_list_tuples, key=operator.itemgetter(0))
+    for (met_zero, met_id, time_step) in sort_by_sim_list_tuples:
+        csvfile.writerow([met_zero, time_step, met_id, 'C', (incidence_time_series_metro_child[(met_zero, met_id, time_step)]), (tot_incidence_time_series_child[(met_zero, met_id, time_step)])])
+    for (sim, met_id, time_step) in sort_by_sim_list_tuples:
+        csvfile.writerow([met_zero, time_step, met_id, 'A', (incidence_time_series_metro_adult[(met_zero, met_id, time_step)]), (tot_incidence_time_series_adult[(met_zero, met_id, time_step)])])
+
+####################################################
+def write_csv_file_test_beta(num_metro_zeros, num_child_zeros, num_adult_zeros, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, beta):
+    
+    #time_series = range(0, time_end)
+    csvfile = csv.writer(open('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Diagnostic_Plots/Unit_Tests/test_beta_value/chain_binomial_output_nummetrozeros_%s_numchildzeros_%s_numadultzeros_%s_beta_%s.csv' % (num_metro_zeros, num_child_zeros, num_adult_zeros, beta), 'wb'), delimiter = ',')
     csvfile.writerow(['metro_zero', 'time_step', 'metro_id', 'age', 'currently_infected', 'total_infected'])
     list_tuples = []
     for (met_zero, met_id, time_step) in incidence_time_series_metro_child:
@@ -1010,11 +1026,11 @@ if __name__ == "__main__":
     gamma = 0.5 # recovery rate based on (1/gamma) day infectious period
     test_gammas = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
     #beta = 0.037 (calc from R=1.2)
-    beta = 0.029
+    #beta = 0.08
     test_betas = [0.005, 0.015, 0.025, 0.035, 0.045, 0.055, 0.065]
     #beta = calculate_beta(R0, gamma, air_network)
     #beta = 0
-    #beta = 0.037 #gamma 0.5
+    beta = 0.037 #gamma 0.5
     #jbeta = 0.005
     num_metro_zeros = 1 # set how many metros to select patients from to start with
     num_child_zeros = 1
@@ -1040,7 +1056,8 @@ if __name__ == "__main__":
     print "\nAverage Large Epidemic Size = ", round(100*average_epidemic_size,2), '%.\n'
     print "\nAverage Adult Epidemic Size = ", round(100*adult_epi_size,2), '%.\n'
     print "\nAverage Child Epidemic Size = ", round(100*child_epi_size,2), '%.\n'
-        
+
+    #write_csv_file_test_beta(num_metro_zeros, num_child_zeros, num_adult_zeros, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, beta)
     #write_csv_file(incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult)
     #PLOT
     #plot_new_cases(metro_ids, time_end, new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult)
