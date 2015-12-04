@@ -333,6 +333,7 @@ def chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult
     
     #experiment parameters
     experiment, time_exp_start, time_exp_end, beta_exp, C_cc_red = exp_param_list
+
     
     # while there are infected individuals
     # go to next time step
@@ -340,7 +341,7 @@ def chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult
     while num_infected > 0 and time_step < time_end:
         
         print "time %s has %s child, %s adult, %s total infections" % (time_step, d_nat_infected_child[time_step], d_nat_infected_adult[time_step], num_infected)
-        #print C
+        print C
         time_step += 1 #update clock
     
         # TRAVEL #
@@ -378,15 +379,23 @@ def chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult
             # child
             Susc_C = d_Susc[(met_id, 'C')] # number of susc children in metro area
             #assign C back to original C?
-            prob = lambda_child_calc(C, Infc_A, Infc_C, met_id, d_metro_age_pop, beta) 
+            orig_C = C
+            orig_beta = beta
+            inter_list = exp_inter_list
+            prob = lambda_child_calc(orig_C, Infc_A, Infc_C, met_id, d_metro_age_pop, orig_beta) 
             if time_step in range(time_exp_start, time_exp_end):
-                while exp_inter_list:
+                while inter_list:
                     inter_apply = exp_inter_list.pop()
                     if inter_apply == 'red_C_cc':
-                        C = C_cc_red
+                        #C = C_cc_red
+                        prob = lambda_child_calc(C_cc_red, Infc_A, Infc_C, met_id, d_metro_age_pop, beta)
                     elif inter_apply == 'red_beta':
-                        beta = beta_exp
-                prob = lambda_child_calc(C, Infc_A, Infc_C, met_id, d_metro_age_pop, beta)    
+                        #beta = beta_exp
+                        prob = lambda_child_calc(C, Infc_A, Infc_C, met_id, d_metro_age_pop, beta_exp)
+                prob = lambda_child_calc(orig_C, Infc_A, Infc_C, met_id, d_metro_age_pop, orig_beta)
+            #else:
+            #    prob = lambda_child_calc(C, Infc_A, Infc_C, met_id, d_metro_age_pop, beta)
+                 
                                            
             #if experiment == 'yes':
             #    if intervention == 'red_C_cc':
@@ -1064,8 +1073,8 @@ if __name__ == "__main__":
     num_metro_zeros = 1 # set how many metros to select patients from to start with
     num_child_zeros = 1
     num_adult_zeros = 0
-    time_end = 150
-    #time_end = 7 # to test if contact matrix changes
+    #time_end = 150
+    time_end = 7 # to test if contact matrix changes
     
     # DEFINE TRAVEL PARAMETERS
     theta_susc = 1
@@ -1074,7 +1083,7 @@ if __name__ == "__main__":
     
     # DEFINE EXP PARAMETERS
     exp_param_list, exp_inter_list = [], []
-    experiment = 'no' #turn exp on or off
+    experiment = 'yes' #turn exp on or off
     exp_param_list.append(experiment)
     time_list, exp_list = exp_func.list_exp_names()
     intervention = exp_list[0] # identify which experiment from the list
@@ -1086,6 +1095,7 @@ if __name__ == "__main__":
     time_exp_start, time_exp_end = exp_func.set_time_start_and_end(timing, length_before, length_after)
     exp_param_list.append(time_exp_start)
     exp_param_list.append(time_exp_end)
+
     
     beta_exp = 0.02
     exp_param_list.append(beta_exp)
@@ -1117,7 +1127,7 @@ if __name__ == "__main__":
     print "\nAverage Adult Epidemic Size = ", round(100*adult_epi_size,2), '%.\n'
     print "\nAverage Child Epidemic Size = ", round(100*child_epi_size,2), '%.\n'
 
-    write_csv_file_test_beta(num_metro_zeros, num_child_zeros, num_adult_zeros, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, beta)
+    #write_csv_file_test_beta(num_metro_zeros, num_child_zeros, num_adult_zeros, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, beta)
     #write_csv_file(incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult)
     #PLOT
     #plot_new_cases(metro_ids, time_end, new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult)
