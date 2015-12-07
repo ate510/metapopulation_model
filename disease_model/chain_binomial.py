@@ -379,20 +379,15 @@ def chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult
             # child
             Susc_C = d_Susc[(met_id, 'C')] # number of susc children in metro area
             #assign C back to original C?
-            orig_C = C
-            orig_beta = beta
-            inter_list = exp_inter_list
-            prob = lambda_child_calc(orig_C, Infc_A, Infc_C, met_id, d_metro_age_pop, orig_beta) 
+            prob = lambda_child_calc(C, Infc_A, Infc_C, met_id, d_metro_age_pop, beta) 
             if time_step in range(time_exp_start, time_exp_end):
-                while inter_list:
+                while exp_inter_list:
                     inter_apply = exp_inter_list.pop()
                     if inter_apply == 'red_C_cc':
-                        #C = C_cc_red
-                        prob = lambda_child_calc(C_cc_red, Infc_A, Infc_C, met_id, d_metro_age_pop, beta)
+                        C = C_cc_red
                     elif inter_apply == 'red_beta':
-                        #beta = beta_exp
-                        prob = lambda_child_calc(C, Infc_A, Infc_C, met_id, d_metro_age_pop, beta_exp)
-                prob = lambda_child_calc(orig_C, Infc_A, Infc_C, met_id, d_metro_age_pop, orig_beta)
+                        beta = beta_exp
+                prob = lambda_child_calc(C, Infc_A, Infc_C, met_id, d_metro_age_pop, beta)
             #else:
             #    prob = lambda_child_calc(C, Infc_A, Infc_C, met_id, d_metro_age_pop, beta)
                  
