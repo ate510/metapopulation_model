@@ -355,14 +355,25 @@ def chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult
         
         # DISEASE #
         
+        #set control values for contact matrix and beta
         C, beta = orig_params_to_exp()
         #print C
         
-        #if statement here to determine if time step in intervention range
+        #create list of interventions
+        _, exp_inter_list = def_exp_params(experiment, intervention, timing, length_before, length_after, beta_exp)
+        
+        #set experimental parameters
+        if time_step in range(time_exp_start, time_exp_end):
+            while exp_inter_list:
+                inter_apply = exp_inter_list.pop()
+                if inter_apply == 'red_C_cc':
+                    C = C_cc_red
+                elif inter_apply == 'red_beta':
+                    beta = beta_exp
             
         for met_id in metro_ids:
             
-            _, exp_inter_list = def_exp_params(experiment, intervention, timing, length_before, length_after, beta_exp)
+            
 
             # Ii --> Ri
             # determine how many child / adult infected will recover in each metro area
@@ -389,15 +400,7 @@ def chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult
             Susc_C = d_Susc[(met_id, 'C')] # number of susc children in metro area
             #assign C back to original C?
             prob = lambda_child_calc(C, Infc_A, Infc_C, met_id, d_metro_age_pop, beta) 
-            if time_step in range(time_exp_start, time_exp_end):
-                while exp_inter_list:
-                    inter_apply = exp_inter_list.pop()
-                    if inter_apply == 'red_C_cc':
-                        C = C_cc_red
-                    elif inter_apply == 'red_beta':
-                        beta = beta_exp
-                prob = lambda_child_calc(C, Infc_A, Infc_C, met_id, d_metro_age_pop, beta)
-                print "time %s contact matrix is %s" % (time_step, C)
+            #print "time %s contact matrix is %s" % (time_step, C)
             #else:
             #    prob = lambda_child_calc(C, Infc_A, Infc_C, met_id, d_metro_age_pop, beta)
                  
