@@ -25,7 +25,7 @@ def list_exp_names ():
     return time_intervals, exp_names
 
 #######################################
-def set_time_start_and_end (time_units, length_before, length_after):
+def set_time_start_and_end (model_peak, data_peak, data_holiday_start, dis_len_before, dis_len_after, trav_len_before, trav_len_after):
     # length_before = how many weeks or time_steps before xmas
     # length_after = how many weeks or time_steps after xmas
     #wk 50 on cum_incid_graph 20%
@@ -49,10 +49,14 @@ def set_time_start_and_end (time_units, length_before, length_after):
     #    #time_start = #time_step when cum incidence = 20%
     #    #time_end = 
     
-    time_start = 2 #80
-    time_end = 3 #94
+    epi_start = (model_peak - data_peak)
+    model_holiday = (epi_start + data_holiday_start)
+    dis_start = (model_holiday - dis_len_before)
+    dis_end = (model_holiday + dis_len_after)
+    travel_start = (model_holiday - trav_len_before)
+    travel_end = (model_holiday + trav_len_after)
     
-    return time_start, time_end
+    return dis_start, dis_end, travel_start, travel_end
     
 #######################################
 #def set_time_end (time_units, ):
@@ -66,13 +70,51 @@ def reduce_C_cc (C):
     C_ca = C.item((0, 1))
     C_ac = C.item((1, 0))
     C_aa = C.item((1, 1))
-    red_percent = .4
+    red_percent = ((27.7 - 11.6) / 27.7) # 58% reduction
+    #red_percent = .4
     red_C_cc = (C_cc - (C_cc * red_percent))
     C_exp = np.matrix([[red_C_cc, C_ca], [C_ac, C_aa]])
     #C.item((0,0)) = red_C_cc #reassign C_cc in contact matrix
     
     return C_exp
     
+#######################################
+def reduce_C_aa (C):
+    
+    C_cc = C.item((0, 0))
+    C_ca = C.item((0, 1))
+    C_ac = C.item((1, 0))
+    C_aa = C.item((1, 1))
+    red_percent = ((27.7 - 11.6) / 27.7) # 58% reduction
+    #red_percent = .4
+    red_C_aa = (C_aa - (C_aa * red_percent))
+    C_exp = np.matrix([[C_cc, C_ca], [C_ac, red_C_aa]])
+    #C.item((0,0)) = red_C_cc #reassign C_cc in contact matrix
+    
+    return C_exp
+
+#######################################
+def reduce_C_all (C):
+    
+    C_cc = C.item((0, 0))
+    C_ca = C.item((0, 1))
+    C_ac = C.item((1, 0))
+    C_aa = C.item((1, 1))
+    C_cc_red_percent = ((27.7 - 11.6) / 27.7) # 58% reduction
+    C_ca_red_percent = ((3.8 - 2.3) / 3.8) # child contacts reported by adults
+    C_ac_red_percent = ((11.2 - 11.7) / 11.2) # adult contacts reported by children
+    C_aa_red_percent = ((14.8 - 15) / 14.8)
+    red_C_cc = (C_cc - (C_cc * C_cc_red_percent))
+    red_C_ca = (C_ca - (C_ca * C_ca_red_percent))
+    red_C_ac = (C_ac - (C_ac * C_ac_red_percent))
+    red_C_aa = (C_aa - (C_aa * C_aa_red_percent))
+    C_exp = np.matrix([[red_C_cc, red_C_ca], [red_C_ac, red_C_aa]])
+    
+    return C_exp
+
+#######################################
+#def inc_child_trav ():
+#    
 #######################################
 #def reduce_all_C_child ():
     # reduce all child contacts
