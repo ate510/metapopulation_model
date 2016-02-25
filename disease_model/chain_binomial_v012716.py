@@ -337,7 +337,7 @@ def chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult
     #experiment, time_exp_start, time_exp_end, beta_exp, C_cc_red = exp_param_list
     
     # assign parameters
-    experiment, disease_intervention, travel_intervention, beta, C, ch_travelers_r, ad_travelers_s = manip_exp_params
+    experiment, disease_intervention, travel_intervention, beta, C, ch_travelers_r, ad_travelers_s, theta_susc, theta_infc, theta_recv = manip_exp_params
     #C_cc_red, beta_exp, ch_trav, ad_trav = test_exp_params
     # calculate intervention time_start and time_end from outside function
     model_peak, data_peak, data_holiday_start, dis_len_before, dis_len_after, trav_len_before, trav_len_after = intervention_time_params
@@ -361,10 +361,10 @@ def chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult
     # while there are infected individuals
     # go to next time step
     num_infected = ((d_nat_infected_child[time_step]) + (d_nat_infected_adult[time_step])) 
-    while time_step < time_end:
+    while num_infected >= 1 and time_step < time_end:
 #    while num_infected >= 1 and time_step < time_end: # changed because i want all dictionaries to have keys with time step to 500 for consistency
         
-        print "time %s has %s child, %s adult, %s total infections, C = %s, beta = %s, frac_ch_travelers = %s, frac_ad_travelers = %s" % (time_step, d_nat_infected_child[time_step], d_nat_infected_adult[time_step], num_infected, C, beta, ch_travelers_r, ad_travelers_s)
+        print "time %s has %s child, %s adult, %s total infections, C = %s, beta = %s, frac_ch_travelers = %s, frac_ad_travelers = %s, theta_s = %s, theta_i = %s, theta_r = %s" % (time_step, d_nat_infected_child[time_step], d_nat_infected_adult[time_step], num_infected, C, beta, ch_travelers_r, ad_travelers_s, theta_susc, theta_infc, theta_recv)
         
         time_step += 1 #update clock
         
@@ -384,6 +384,9 @@ def chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult
         #assign child travelers and adult travelers
         ch_travelers_r = param_dict['r']
         ad_travelers_s = param_dict['s']
+        theta_susc = param_dict['theta_susc']
+        theta_infc = param_dict['theta_infc']
+        theta_recv = param_dict['theta_recv']
     
         # create two dictionaries with probabilities of travel for each age group, keys being tuples of cities: (i, j) and (j, i)
         d_prob_travel_C, d_prob_travel_A = pop_func.calc_prob_travel(air_network, alpha, ch_travelers_r, ad_travelers_s, d_metropop)
@@ -496,7 +499,7 @@ def chain_binomial_monte_carlo(R0, beta, gamma, alpha, theta_susc, theta_infc, t
 
     d_metro_age_pop = pop_func.calc_metro_age_pop(filename_metropop, alpha)
     
-    _, disease_intervention, travel_intervention, _, _, _, _ = manip_exp_params
+    _, disease_intervention, travel_intervention, _, _, _, _, _, _, _ = manip_exp_params
 
     epidemic_sizes, adult_epidemic_sizes, child_epidemic_sizes = [], [], [] # will keep list of outbreak sizes
     for metro in abrv_metro_ids: #grabs first two metros
@@ -787,20 +790,58 @@ def write_csv_file (incidence_time_series_metro_child, incidence_time_series_met
     csvfile = csv.writer(open('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/chain_binomial_output_nummetrozeros_%s_numchildzeros_%s_numadultzeros_%s_disease_%s_travel_%s.csv' % (num_metro_zeros, num_child_zeros, num_adult_zeros, disease_intervention, travel_intervention), 'wb'), delimiter = ',')
     csvfile.writerow(['metro_zero', 'time_step', 'metro_id', 'age', 'currently_infected', 'total_infected'])
     child_list_tuples, adult_list_tuples = [], [] # create separate lists for child and adult keys
-    #child epi
+    
+    # grab tuples from child time series
     for (met_zero, met_id, time_step) in incidence_time_series_metro_child:
         child_list_tuples.append((met_zero, met_id, time_step))
-    sort_by_time_ch_list_tuples = sorted(child_list_tuples, key=operator.itemgetter(2))
-    sort_by_sim_ch_list_tuples = sorted(sort_by_time_ch_list_tuples, key=operator.itemgetter(0))
-    for (met_zero, met_id, time_step) in sort_by_sim_ch_list_tuples:
-        csvfile.writerow([met_zero, time_step, met_id, 'C', (incidence_time_series_metro_child[(met_zero, met_id, time_step)]), (tot_incidence_time_series_child[(met_zero, met_id, time_step)])])
-    #adult epi
+    # grab tuples from adult time series
     for (met_zero, met_id, time_step) in incidence_time_series_metro_adult:
         adult_list_tuples.append((met_zero, met_id, time_step))
-    sort_by_time_ad_list_tuples = sorted(adult_list_tuples, key=operator.itemgetter(2))
-    sort_by_sim_ad_list_tuples = sorted(sort_by_time_ad_list_tuples, key=operator.itemgetter(0))
-    for (sim, met_id, time_step) in sort_by_sim_ad_list_tuples:
-        csvfile.writerow([met_zero, time_step, met_id, 'A', (incidence_time_series_metro_adult[(met_zero, met_id, time_step)]), (tot_incidence_time_series_adult[(met_zero, met_id, time_step)])])
+    # combine all unique tuples into one list
+    tuples = list(set(child_list_tuples + adult_list_tuples))
+    
+    # loop thru unique tuples
+    for (met_zero, met_id, time_step) in tuples:
+        # assign keys not in child a value of 0
+        if (met_zero, met_id, time_step) not in incidence_time_series_metro_child: 
+            incidence_time_series_metro_child[(met_zero, met_id, time_step)] = incidence_time_series_metro_child.get((met_zero, met_id, time_step), 0)      
+        # assign keys not in adult a value of 0
+        if (met_zero, met_id, time_step) not in incidence_time_series_metro_adult:
+            incidence_time_series_metro_adult[(met_zero, met_id, time_step)] = incidence_time_series_metro_adult.get((met_zero, met_id, time_step), 0)
+    
+    # sort all unique tuples for csv writing (csv order: metro_zero, time, met_id) - want metro zeros in order, and time steps in order
+    sort_by_time_list_tuples = sorted(tuples, key=operator.itemgetter(2)) # sort by time
+    sort_by_sim_list_tuples = sorted(sort_by_time_list_tuples, key=operator.itemgetter(0)) # now sort by metro_zero
+    
+    # write child rows
+    for (met_zero, met_id, time_step) in sort_by_sim_list_tuples:
+        csvfile.writerow([met_zero, time_step, met_id, 'C', (incidence_time_series_metro_child[(met_zero, met_id, time_step)]), (tot_incidence_time_series_child[(met_zero, met_id, time_step)])])          
+    # write adult rows
+    for (met_zero, met_id, time_step) in sort_by_sim_list_tuples:
+        csvfile.writerow([met_zero, time_step, met_id, 'A', (incidence_time_series_metro_adult[(met_zero, met_id, time_step)]), (tot_incidence_time_series_adult[(met_zero, met_id, time_step)])])            
+#
+#    sort_by_time_ch_list_tuples = sorted(child_list_tuples, key=operator.itemgetter(2))
+#    sort_by_sim_ch_list_tuples = sorted(sort_by_time_ch_list_tuples, key=operator.itemgetter(0))
+#    # grab tuples from adult time series
+#
+#    sort_by_time_ad_list_tuples = sorted(adult_list_tuples, key=operator.itemgetter(2))
+#    sort_by_sim_ad_list_tuples = sorted(sort_by_time_ad_list_tuples, key=operator.itemgetter(0))
+#    
+#    #child epi
+#    for (met_zero, met_id, time_step) in sort_by_sim_ch_list_tuples:
+#        if (met_zero, met_id, time_step) not in incidence_time_series_metro_child:
+#            incidence_time_series_metro_child[(met_zero, met_id, time_step)] = incidence_time_series_metro_child.get((met_zero, met_id, time_step), 0)
+#            csvfile.writerow([met_zero, time_step, met_id, 'C', (incidence_time_series_metro_child[(met_zero, met_id, time_step)]), (tot_incidence_time_series_child[(met_zero, met_id, time_step)])])
+#        else:
+#            csvfile.writerow([met_zero, time_step, met_id, 'C', (incidence_time_series_metro_child[(met_zero, met_id, time_step)]), (tot_incidence_time_series_child[(met_zero, met_id, time_step)])])            
+#    #adult epi
+#    for (met_zero, met_id, time_step) in sort_by_sim_ad_list_tuples:
+#        if (met_zero, met_id, time_step) not in incidence_time_series_metro_adult:
+#            incidence_time_series_metro_adult[(met_zero, met_id, time_step)] = incidence_time_series_metro_adult.get((met_zero, met_id, time_step), 0)
+#            #tot_incidence_time_series_adult[(met_zero, met_id, time_step)] = tot_incidence_time_series_adult.get((met_zero, met_id, time_step), 'total of previous time step?')
+#            csvfile.writerow([met_zero, time_step, met_id, 'A', (incidence_time_series_metro_adult[(met_zero, met_id, time_step)]), (tot_incidence_time_series_adult[(met_zero, met_id, time_step)])])            
+#        else:
+#            csvfile.writerow([met_zero, time_step, met_id, 'A', (incidence_time_series_metro_adult[(met_zero, met_id, time_step)]), (tot_incidence_time_series_adult[(met_zero, met_id, time_step)])])
 
 ####################################################
 def write_csv_file_no_travel(num_metro_zeros, num_child_zeros, num_adult_zeros, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, beta):
@@ -1076,8 +1117,11 @@ def def_disease_exp_params (disease_intervention, travel_intervention, beta, C, 
         
     ch_trav = ch_travelers_r
     ad_trav = ad_travelers_s
+    tsusc = theta_susc
+    tinfc = theta_infc
+    trecv = theta_recv
     
-    exp_param_dict = {'dis_int': disease_intervention, 'trav_int': travel_intervention, 'beta': beta_exp, 'C': C_red,'r': ch_trav,'s': ad_trav}
+    exp_param_dict = {'dis_int': disease_intervention, 'trav_int': travel_intervention, 'beta': beta_exp, 'C': C_red, 'r': ch_trav, 's': ad_trav, 'theta_susc': tsusc, 'theta_infc': tinfc, 'theta_recv': trecv}
 
     return exp_param_dict
     
@@ -1108,12 +1152,25 @@ def def_exp_params (disease_intervention, travel_intervention, beta, C, ch_trave
     if travel_intervention == 'inc_child_trav':
         ch_trav = 0.15 # based on Kucharski increase for children fig. 2 (>30 mile travel)
         ad_trav = (1 - ch_trav)
+        tsusc = theta_susc
+        tinfc = theta_infc
+        trecv = theta_recv
+        
+    elif travel_intervention == 'inc_all_trav':
+        ch_trav = 0.15 # based on Kucharski increase for children fig. 2 (>30 mile travel)
+        ad_trav = (1 - ch_trav)
+        tsusc = (theta_susc * 1.23)
+        tinfc = (theta_infc * 1.23)
+        trecv = (theta_recv * 1.23)
     
     elif travel_intervention == 'none':
         ch_trav = ch_travelers_r
         ad_trav = ad_travelers_s
+        tsusc = theta_susc
+        tinfc = theta_infc
+        trecv = theta_recv
 
-    exp_param_dict = {'dis_int': disease_intervention, 'trav_int': travel_intervention, 'beta': beta_exp, 'C': C_red,'r': ch_trav,'s': ad_trav}
+    exp_param_dict = {'dis_int': disease_intervention, 'trav_int': travel_intervention, 'beta': beta_exp, 'C': C_red,'r': ch_trav,'s': ad_trav, 'theta_susc': tsusc, 'theta_infc': tinfc, 'theta_recv': trecv}
     
     return exp_param_dict
     
@@ -1196,13 +1253,14 @@ if __name__ == "__main__":
     experiment = 'yes' #turn exp on or off
     #experiment = 'no'
     manip_exp_params.append(experiment)
-    #disease_intervention = 'red_C_cc'
+    disease_intervention = 'red_C_cc'
     #disease_intervention = 'red_C_aa'
     #disease_intervention = 'red_C_all'
-    disease_intervention = 'none'
+    #disease_intervention = 'none'
     manip_exp_params.append(disease_intervention)
-    #travel_intervention = 'none''
-    travel_intervention = 'inc_child_trav'
+    travel_intervention = 'none'
+    #travel_intervention = 'inc_child_trav'
+    #travel_intervention = 'inc_all_trav'
     manip_exp_params.append(travel_intervention)
     
     #timing = 'real_time'
@@ -1234,6 +1292,10 @@ if __name__ == "__main__":
     manip_exp_params.append(C)
     manip_exp_params.append(ch_travelers_r)
     manip_exp_params.append(ad_travelers_s)
+    
+    manip_exp_params.append(theta_susc)
+    manip_exp_params.append(theta_infc)
+    manip_exp_params.append(theta_recv)
     
     base_param_dict = def_orig_params(disease_intervention, travel_intervention, beta, C, ch_travelers_r, ad_travelers_s, theta_susc, theta_infc, theta_recv)
     disease_exp_param_dict = def_disease_exp_params(disease_intervention, travel_intervention, beta, C, ch_travelers_r, ad_travelers_s, theta_susc, theta_infc, theta_recv) # this dictionary is for the week with only the disease intervention
