@@ -52,6 +52,7 @@ def import_popdata (datafile, yrcol, agecol, popcol):
         year = int(row[yrcol])
 	yr_list.append(year)
         age = str.lower(row[agecol])
+        age_list.append(age)
     ## to remove 'years' in '10-14 years'
      #   if len(age) > 6:
      #       age = (age[:-6])
@@ -527,15 +528,23 @@ if __name__ == "__main__":
     year = 2010
     
     a = calc_alpha(year, dict_childpop, dict_adultpop)
-    print a
+    #print a
     q_c, q_a, p_c, p_a, C_cc, C_aa = calc_p(filename_germ_within_group_contact_data, filename_germ_pop_data, filename_germ_all_contact_data)
-    print q_c
-    print q_a
-    print p_c
-    print p_a
-    print C_cc
-    print C_aa
+    #print q_c
+    #print q_a
+    #print p_c
+    #print p_a
+    #print C_cc
+    #print C_aa
 
     C = calc_contact_matrix_pqa(p_c, p_a, q_c, q_a, a)
+    #print C
+    #print C.item((1, 0))
 
-    print C
+    #print C
+    
+    d_metropop, metro_ids = import_metropop(filename_metropop, 2, 3)
+
+    pop_size = sum([d_metropop[x] for x in metro_ids])
+    #print (pop_size - (pop_size*a))
+    #print a
