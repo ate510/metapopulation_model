@@ -42,6 +42,22 @@ def import_metropop (filename, metrocol, popcol):
     return dict_metropop, list(set(metro_list))
 
 ###################################################
+def import_csv_metropop (filename, metrocol, popcol):
+#create function to import pop of each metro area
+
+    # import US metro pop data
+    datafile = csv.reader(open(filename, 'r'),delimiter = ',')
+    headers = datafile.next()
+        
+    dict_metropop, metro_list = {}, []
+    for row in datafile:
+        metro_id = int(float(row[metrocol]))
+        metro_list.append(metro_id)
+        pop = float(row[popcol])
+        dict_metropop[(metro_id)] = pop
+    return dict_metropop, list(set(metro_list))
+
+###################################################
 def import_popdata (datafile, yrcol, agecol, popcol):
 #create a function that imports national pop data into dictionaries and lists
 ##Names in script: d_yr_age, ages, years = {}, [], []
@@ -288,12 +304,31 @@ def calc_alpha (year, dict_childpop, dict_adultpop):
     alpha = ((childpop) / (childpop + adultpop))
     
     return alpha
+#    
+####################################################
+#def calc_metro_age_pop (filename_metropop, alpha):
+##assign metro pop for child and adult based on alpha
+#
+#    d_pop_for_metro, metro_ids = import_metropop(filename_metropop, 2, 3) #key: metro_id, value: popsize
+#    #x = [d_pop_for_metro[met_id] for met_id in metro_ids] # list with populations of each metro area
+#    #print len(set(x)) # = 225 - means all pops are unique
+#    #print len(metro_ids) # = 225
+#    
+#    d_pop_for_metro_age = {}
+#    for met_id in metro_ids:
+#        metro_pop = d_pop_for_metro[met_id]
+#        child_pop = int(metro_pop * alpha)
+#        adult_pop = (metro_pop - child_pop)
+#        d_pop_for_metro_age[(met_id, 'child')] = child_pop
+#        d_pop_for_metro_age[(met_id, 'adult')] = adult_pop
+#  
+#    return d_pop_for_metro_age
     
 ###################################################
-def calc_metro_age_pop (filename_metropop, alpha):
+def calc_csv_metro_age_pop (filename_metropop, alpha):
 #assign metro pop for child and adult based on alpha
 
-    d_pop_for_metro, metro_ids = import_metropop(filename_metropop, 2, 3) #key: metro_id, value: popsize
+    d_pop_for_metro, metro_ids = import_csv_metropop(filename_metropop, 1, 2) #key: metro_id, value: popsize
     #x = [d_pop_for_metro[met_id] for met_id in metro_ids] # list with populations of each metro area
     #print len(set(x)) # = 225 - means all pops are unique
     #print len(metro_ids) # = 225
@@ -509,7 +544,8 @@ ad_2 = 65
 ####################################################
 if __name__ == "__main__":
     
-    filename_metropop = 'Dropbox/Anne_Bansal_lab/Python_Scripts/Modeling_Project/air_traffic_data/metedges.txt'
+    #filename_metropop = 'Dropbox/Anne_Bansal_lab/Python_Scripts/Modeling_Project/air_traffic_data/metedges.txt' # use columns 3 and 4 (index 2, 3)
+    filename_metropop = 'Dropbox/Anne_Bansal_lab/Python_Scripts/Modeling_Project/air_traffic_data/edgelists/metro_pop.csv'
     filename_germ_contact_data = 'Dropbox/Anne_Bansal_lab/Contact_Data/polymod_germany_contact_matrix_Mossong_2008.csv'
     filename_germ_within_group_contact_data = 'Dropbox/Anne_Bansal_lab/Contact_Data/within_group_polymod_germany_contact_matrix_Mossong_2008.csv'
     filename_germ_all_contact_data = 'Dropbox/Anne_Bansal_lab/Contact_Data/all_ages_polymod_germany_contact_matrix_Mossong_2008.csv'
@@ -543,7 +579,7 @@ if __name__ == "__main__":
 
     #print C
     
-    d_metropop, metro_ids = import_metropop(filename_metropop, 2, 3)
+    d_metropop, metro_ids = import_csv_metropop(filename_metropop, 1, 2)
 
     pop_size = sum([d_metropop[x] for x in metro_ids])
     #print (pop_size - (pop_size*a))
