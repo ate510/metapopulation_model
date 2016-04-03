@@ -285,7 +285,7 @@ def travel_btwn_metros(air_network, d_Susc, d_Infc, d_Recv, d_prob_travel_C, d_p
         
         
 ###################################################
-def chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult, d_metro_tot_infected_child, d_metro_tot_infected_adult, metro_zero, d_metro_age_pop, d_metropop, metro_ids, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, air_network, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, params_to_calc_C, manip_exp_params, intervention_time_params, base_param_dict, exp_param_dict):
+def chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult, d_metro_tot_infected_child, d_metro_tot_infected_adult, metro_zero, d_metro_age_pop, d_metropop, metro_ids, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, params_to_calc_C, manip_exp_params, intervention_time_params, base_param_dict, exp_param_dict):
 # given a per contact, per time step tranmssion probability (beta) and
 #  a per time step recovery probability (gamma), use the SIR chain binomial
 #  model to simulate ONE outbreak on the population (provided by contact_network)
@@ -387,6 +387,8 @@ def chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult
         theta_susc = param_dict['theta_susc']
         theta_infc = param_dict['theta_infc']
         theta_recv = param_dict['theta_recv']
+        air_network = param_dict['trav_network']
+        
     
         # create two dictionaries with probabilities of travel for each age group, keys being tuples of cities: (i, j) and (j, i)
         d_prob_travel_C, d_prob_travel_A = pop_func.calc_prob_travel(air_network, alpha, ch_travelers_r, ad_travelers_s, d_metropop)
@@ -484,7 +486,7 @@ def chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult
     return d_new_cases_child, d_new_cases_adult, d_metro_infected_child, d_metro_infected_adult, d_metro_tot_infected_child, d_metro_tot_infected_adult, sum(d_tot_new_cases_child.values()), sum(d_tot_new_cases_adult.values()) # return total number infected in outbreak
 
 ###################################################
-def chain_binomial_monte_carlo(R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, air_network, ch_travelers_r, ad_travelers_s, params_to_calc_C, manip_exp_params, intervention_time_params, abrv_metro_ids):
+def chain_binomial_monte_carlo(R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, ch_travelers_r, ad_travelers_s, params_to_calc_C, manip_exp_params, intervention_time_params, abrv_metro_ids):
 # run many (num_sims) instances of chain binomial simulation and return average epidemic size
     '''function used to run the chain binomial for the # of simulations desired; returns avg epidemic size, returns information necessary to write csv'''   
 
@@ -497,14 +499,14 @@ def chain_binomial_monte_carlo(R0, beta, gamma, alpha, theta_susc, theta_infc, t
     population_size = sum([d_metropop[x] for x in metro_ids])
     threshold = 0.10 # 10% of population size is our threshold for a large epidemic
 
-    d_metro_age_pop = pop_func.calc_metro_age_pop(filename_metropop, alpha)
+    d_metro_age_pop = pop_func.calc_csv_metro_age_pop(filename_metropop, alpha)
     
     _, disease_intervention, travel_intervention, _, _, _, _, _, _, _ = manip_exp_params
 
     epidemic_sizes, adult_epidemic_sizes, child_epidemic_sizes = [], [], [] # will keep list of outbreak sizes
     for metro in abrv_metro_ids: #grabs first two metros
 
-        new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, outbreak_size_child, outbreak_size_adult = chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult, d_metro_tot_infected_child, d_metro_tot_infected_adult, metro, d_metro_age_pop, d_metropop, metro_ids, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, air_network, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, params_to_calc_C, manip_exp_params, intervention_time_params, base_param_dict, exp_param_dict)
+        new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, outbreak_size_child, outbreak_size_adult = chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult, d_metro_tot_infected_child, d_metro_tot_infected_adult, metro, d_metro_age_pop, d_metropop, metro_ids, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, params_to_calc_C, manip_exp_params, intervention_time_params, base_param_dict, exp_param_dict)
 
         outbreak_size = (outbreak_size_child + outbreak_size_adult)
 
@@ -515,8 +517,10 @@ def chain_binomial_monte_carlo(R0, beta, gamma, alpha, theta_susc, theta_infc, t
         
         ###output - plot for each sim
         ###changed first arg from metro_ids to abrv_metro_ids --> when i did this it seemed to only plot those two metros, not what I want, issue may have been time
-        #plot_new_cases(metro_ids, time_end, new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, metro, alpha, ch_travelers_r, R0, gamma, beta, disease_intervention)
-        #plot_current_cases(metro_ids, time_end, incidence_time_series_metro_child, incidence_time_series_metro_adult, metro, alpha, ch_travelers_r, R0, gamma, beta, disease_intervention)
+        #plot_new_cases(metro_ids, time_end, new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, metro, alpha, ch_travelers_r, R0, gamma, beta, disease_intervention, travel_intervention)
+        #create list of all possible tuples in current case dictionaries
+        #current_case_tuples = create_current_case_tuples(metro_ids, incidence_time_series_metro_child, incidence_time_series_metro_adult, metro)
+        #plot_current_cases(current_case_tuples, metro_ids, incidence_time_series_metro_child, incidence_time_series_metro_adult, metro, alpha, ch_travelers_r, R0, gamma, beta, disease_intervention, travel_intervention)
             
     # calculate average epidemic size, and how frequent they were
     if epidemic_sizes:
@@ -543,7 +547,7 @@ def chain_binomial_monte_carlo(R0, beta, gamma, alpha, theta_susc, theta_infc, t
     return average_epidemic_size, standard_deviation, avg_adult_epi_size, avg_child_epi_size, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult
 
 ###################################################
-def chain_binomial_monte_carlo_unit_tests(unit_test, R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, air_network, ch_travelers_r, ad_travelers_s, params_to_calc_C, manip_exp_params, intervention_time_params):
+def chain_binomial_monte_carlo_unit_tests(unit_test, R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, ch_travelers_r, ad_travelers_s, params_to_calc_C, manip_exp_params, intervention_time_params):
 # run many (num_sims) instances of chain binomial simulation and return average epidemic size 
     '''this function is used in the unit test scripts when an output plot is desired'''   
 
@@ -556,12 +560,12 @@ def chain_binomial_monte_carlo_unit_tests(unit_test, R0, beta, gamma, alpha, the
     population_size = sum([d_metropop[x] for x in metro_ids])
     threshold = 0.10 # 10% of population size is our threshold for a large epidemic
 
-    d_metro_age_pop = pop_func.calc_metro_age_pop(filename_metropop, alpha)
+    d_metro_age_pop = pop_func.calc_csv_metro_age_pop(filename_metropop, alpha)
 
     large_epidemic_sizes= [] # will keep list of outbreak sizes that are large epidemics
     for metro_zero in metro_ids:
 
-        new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, outbreak_size_child, outbreak_size_adult = chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult, d_metro_tot_infected_child, d_metro_tot_infected_adult, metro_zero, d_metro_age_pop, d_metropop, metro_ids, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, air_network, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, params_to_calc_C, manip_exp_params, intervention_time_params, base_param_dict, exp_param_dict)
+        new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, outbreak_size_child, outbreak_size_adult = chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult, d_metro_tot_infected_child, d_metro_tot_infected_adult, metro_zero, d_metro_age_pop, d_metropop, metro_ids, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, params_to_calc_C, manip_exp_params, intervention_time_params, base_param_dict, exp_param_dict)
 
         outbreak_size = (outbreak_size_child + outbreak_size_adult)
 
@@ -570,7 +574,7 @@ def chain_binomial_monte_carlo_unit_tests(unit_test, R0, beta, gamma, alpha, the
         
         #output - plot for each metro_zero
         plot_new_cases_unit_tests(unit_test, metro_ids, time_end, new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, metro_zero, alpha, ch_travelers_r, R0, gamma, beta)
-        #plot_current_cases(metro_ids, time_end, incidence_time_series_metro_child, incidence_time_series_metro_adult, sim)
+        #plot_current_cases(metro_ids, incidence_time_series_metro_child, incidence_time_series_metro_adult, sim)
         #write_csv_file(incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, disease_intervention, travel_intervention, timing)
             
     # calculate average large epidemic size, and how frequent they were
@@ -585,7 +589,7 @@ def chain_binomial_monte_carlo_unit_tests(unit_test, R0, beta, gamma, alpha, the
     return average_epidemic_size
 
 ###################################################
-def chain_binomial_monte_carlo_unit_tests_csv(unit_test, R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, air_network, ch_travelers_r, ad_travelers_s, params_to_calc_C, manip_exp_params, intervention_time_params):
+def chain_binomial_monte_carlo_unit_tests_csv(unit_test, R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, ch_travelers_r, ad_travelers_s, params_to_calc_C, manip_exp_params, intervention_time_params):
 # run many (num_sims) instances of chain binomial simulation and return average epidemic size    
     '''this function is used for unit tests when no plot and output to write a csv is desired'''
 
@@ -598,12 +602,12 @@ def chain_binomial_monte_carlo_unit_tests_csv(unit_test, R0, beta, gamma, alpha,
     population_size = sum([d_metropop[x] for x in metro_ids])
     threshold = 0.10 # 10% of population size is our threshold for a large epidemic
 
-    d_metro_age_pop = pop_func.calc_metro_age_pop(filename_metropop, alpha)
+    d_metro_age_pop = pop_func.calc_csv_metro_age_pop(filename_metropop, alpha)
 
     large_epidemic_sizes, adult_epidemic_sizes, child_epidemic_sizes = [], [], [] # will keep list of outbreak sizes that are large epidemics
     for metro_zero in metro_ids:
 
-        new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, outbreak_size_child, outbreak_size_adult = chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult, d_metro_tot_infected_child, d_metro_tot_infected_adult, metro_zero, d_metro_age_pop, d_metropop, metro_ids, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, air_network, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, params_to_calc_C, manip_exp_params, intervention_time_params, base_param_dict, exp_param_dict)
+        new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, outbreak_size_child, outbreak_size_adult = chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult, d_metro_tot_infected_child, d_metro_tot_infected_adult, metro_zero, d_metro_age_pop, d_metropop, metro_ids, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, params_to_calc_C, manip_exp_params, intervention_time_params, base_param_dict, exp_param_dict)
         print outbreak_size_child
         print outbreak_size_adult
         outbreak_size = (outbreak_size_child + outbreak_size_adult)
@@ -620,7 +624,7 @@ def chain_binomial_monte_carlo_unit_tests_csv(unit_test, R0, beta, gamma, alpha,
         
         #output - plot for each metro_zero
         #plot_new_cases_unit_tests(unit_test, metro_ids, time_end, new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, metro_zero, alpha, ch_travelers_r, R0, gamma, beta)
-        #plot_current_cases(metro_ids, time_end, incidence_time_series_metro_child, incidence_time_series_metro_adult, sim)
+        #plot_current_cases(metro_ids, incidence_time_series_metro_child, incidence_time_series_metro_adult, sim)
         #write_csv_file(incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, disease_intervention, travel_intervention, timing)
             
     # calculate average large epidemic size, and how frequent they were
@@ -646,7 +650,7 @@ def chain_binomial_monte_carlo_unit_tests_csv(unit_test, R0, beta, gamma, alpha,
     return average_epidemic_size, avg_adult_epi_size, avg_child_epi_size, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult
 
 ###################################################
-def chain_binomial_monte_carlo_unit_tests_csv_test(unit_test, R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, air_network, ch_travelers_r, ad_travelers_s, params_to_calc_C, manip_exp_params, intervention_time_params):
+def chain_binomial_monte_carlo_unit_tests_csv_test(unit_test, R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, ch_travelers_r, ad_travelers_s, params_to_calc_C, manip_exp_params, intervention_time_params):
 # run many (num_sims) instances of chain binomial simulation and return average epidemic size    
 
     d_metro_infected_child, d_metro_infected_adult = {}, {}
@@ -658,12 +662,12 @@ def chain_binomial_monte_carlo_unit_tests_csv_test(unit_test, R0, beta, gamma, a
     population_size = sum([d_metropop[x] for x in metro_ids])
     threshold = 0.10 # 10% of population size is our threshold for a large epidemic
 
-    d_metro_age_pop = pop_func.calc_metro_age_pop(filename_metropop, alpha)
+    d_metro_age_pop = pop_func.calc_csv_metro_age_pop(filename_metropop, alpha)
 
     large_epidemic_sizes, adult_epidemic_sizes, child_epidemic_sizes = [], [], [] # will keep list of outbreak sizes that are large epidemics
     metro_zero = 1
 
-    new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, outbreak_size_child, outbreak_size_adult = chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult, d_metro_tot_infected_child, d_metro_tot_infected_adult, metro_zero, d_metro_age_pop, d_metropop, metro_ids, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, air_network, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, params_to_calc_C, manip_exp_params, intervention_time_params, base_param_dict, exp_param_dict)
+    new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, outbreak_size_child, outbreak_size_adult = chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult, d_metro_tot_infected_child, d_metro_tot_infected_adult, metro_zero, d_metro_age_pop, d_metropop, metro_ids, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, params_to_calc_C, manip_exp_params, intervention_time_params, base_param_dict, exp_param_dict)
 
     outbreak_size = (outbreak_size_child + outbreak_size_adult)
     
@@ -688,7 +692,7 @@ def chain_binomial_monte_carlo_unit_tests_csv_test(unit_test, R0, beta, gamma, a
         
         #output - plot for each metro_zero
         #plot_new_cases_unit_tests(unit_test, metro_ids, time_end, new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, metro_zero, alpha, ch_travelers_r, R0, gamma, beta)
-        #plot_current_cases(metro_ids, time_end, incidence_time_series_metro_child, incidence_time_series_metro_adult, sim)
+        #plot_current_cases(metro_ids, incidence_time_series_metro_child, incidence_time_series_metro_adult, sim)
         #write_csv_file(incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, disease_intervention, travel_intervention, timing)
             
     # calculate average large epidemic size, and how frequent they were
@@ -715,7 +719,7 @@ def chain_binomial_monte_carlo_unit_tests_csv_test(unit_test, R0, beta, gamma, a
     return average_epidemic_size, avg_adult_epi_size, avg_child_epi_size, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult
                
 ###################################################
-def chain_binomial_monte_carlo_unit_tests_no_plot(unit_test, R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, air_network, ch_travelers_r, ad_travelers_s, params_to_calc_C, manip_exp_params, intervention_time_params):
+def chain_binomial_monte_carlo_unit_tests_no_plot(unit_test, R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, ch_travelers_r, ad_travelers_s, params_to_calc_C, manip_exp_params, intervention_time_params):
 # run many (num_sims) instances of chain binomial simulation and return average epidemic size    
 
     d_metro_infected_child, d_metro_infected_adult = {}, {}
@@ -727,14 +731,14 @@ def chain_binomial_monte_carlo_unit_tests_no_plot(unit_test, R0, beta, gamma, al
     population_size = sum([d_metropop[x] for x in metro_ids])
     threshold = 0.10 # 10% of population size is our threshold for a large epidemic
 
-    d_metro_age_pop = pop_func.calc_metro_age_pop(filename_metropop, alpha)
+    d_metro_age_pop = pop_func.calc_csv_metro_age_pop(filename_metropop, alpha)
 
     large_epidemic_sizes= [] # will keep list of outbreak sizes that are large epidemics
     for metro in metro_ids:
-        #incidence_time_series, outbreak_size = chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult, d_metro_tot_infected_child, d_metro_tot_infected_adult, sim, d_metro_age_pop, d_metropop, metro_ids, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, air_network, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, params_to_calc_C, manip_exp_params, intervention_time_params, base_param_dict, exp_param_dict)
+        #incidence_time_series, outbreak_size = chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult, d_metro_tot_infected_child, d_metro_tot_infected_adult, sim, d_metro_age_pop, d_metropop, metro_ids, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, params_to_calc_C, manip_exp_params, intervention_time_params, base_param_dict, exp_param_dict)
         # Note we are not using the incidence time series right now
         
-        new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, outbreak_size_child, outbreak_size_adult = chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult, d_metro_tot_infected_child, d_metro_tot_infected_adult, metro, d_metro_age_pop, d_metropop, metro_ids, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, air_network, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, params_to_calc_C, manip_exp_params, intervention_time_params, base_param_dict, exp_param_dict)
+        new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, outbreak_size_child, outbreak_size_adult = chain_binomial_one_simulation(d_metro_infected_child, d_metro_infected_adult, d_metro_tot_infected_child, d_metro_tot_infected_adult, metro, d_metro_age_pop, d_metropop, metro_ids, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, ch_travelers_r, ad_travelers_s, num_metro_zeros, num_child_zeros, num_adult_zeros, params_to_calc_C, manip_exp_params, intervention_time_params, base_param_dict, exp_param_dict)
         print outbreak_size_child
         print outbreak_size_adult
         outbreak_size = (outbreak_size_child + outbreak_size_adult)
@@ -744,8 +748,8 @@ def chain_binomial_monte_carlo_unit_tests_no_plot(unit_test, R0, beta, gamma, al
         large_epidemic_sizes.append(outbreak_size)
         
         ##output - plot for each sim
-        #plot_new_cases(metro_ids, time_end, new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, sim, alpha, ch_travelers_r, R0, gamma, beta, intervention)
-        #plot_current_cases(metro_ids, time_end, incidence_time_series_metro_child, incidence_time_series_metro_adult, sim, alpha, ch_travelers_r, R0, gamma, beta, intervention)
+        #plot_new_cases(metro_ids, time_end, new_cases_incidence_time_series_metro_child, new_cases_incidence_time_series_metro_adult, sim, alpha, ch_travelers_r, R0, gamma, beta, disease_intervention, travel_intervention)
+        #plot_current_cases(metro_ids, incidence_time_series_metro_child, incidence_time_series_metro_adult, sim, alpha, ch_travelers_r, R0, gamma, beta, disease_intervention, travel_intervention)
         #write_csv_file(incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, disease_intervention, travel_intervention, timing)
             
     # calculate average large epidemic size, and how frequent they were
@@ -767,7 +771,8 @@ def read_edgelist_anne (filename):
     file = open(filename, 'rU')
     reader = csv.reader(file)
     for row in reader:
-        data = row[0].split('\t')
+        #data = row[0].split('\t') #for air_network
+        data = row[0].split(' ') #for baseline_air_network and holiday_air_network
         G.add_edge(int(data[0]),int(data[1]), weight=float(data[2]))
         
     return G
@@ -893,15 +898,46 @@ def write_csv_file_experiments(incidence_time_series_metro_child, incidence_time
 
 
 ###################################################
-def plot_new_cases (metro_ids, time_end, d_new_cases_child, d_new_cases_adult, metro_zero, alpha, ch_travelers_r, R0, gamma, beta, intervention):
+def plot_new_cases (metro_ids, time_end, d_new_cases_child, d_new_cases_adult, metro_zero, alpha, ch_travelers_r, R0, gamma, beta, disease_intervention, travel_intervention):
 # print out time series of new cases at each time step
 # one line for each metro area
 # one plot for child, one for adult
     
-# child
+    #child_list_tuples, adult_list_tuples = [], []
+    
+#    # grab tuples from child time series
+#    for (met_id, time_step) in d_new_cases_child:
+#        child_list_tuples.append((met_id, time_step))
+#        
+#    for (met_id, time_step) in d_new_cases_adult:
+#        adult_list_tuples.append((met_id, time_step))
+#
+#    # combine all unique tuples into one list
+#    tuples = list(set(child_list_tuples + adult_list_tuples))
+    
+    #create all possible tuple combos
     for met_id in metro_ids:
         #time_series = range(0, time_end)
-        time_series = list(set([key[1] for key in sorted(d_new_cases_child)]))
+        time_series_child = list(set([key[1] for key in sorted(d_new_cases_child)]))
+        time_series_adult = list(set([key[1] for key in sorted(d_new_cases_adult)]))
+        tuple_time_series = list(set(time_series_child + time_series_adult))
+        tuples = [(met_id, t) for t in tuple_time_series]
+    
+        # loop thru unique tuples
+        for t in tuples:
+            # assign keys not in child a value of 0
+            if t not in d_new_cases_child: 
+                d_new_cases_child[t] = d_new_cases_child.get(t, 0)      
+            # assign keys not in adult a value of 0
+            if t not in d_new_cases_adult:
+                d_new_cases_adult[t] = d_new_cases_adult.get(t, 0)
+
+
+# child
+    #for met_id in metro_ids:
+        #time_series = range(0, time_end)
+        #time_series = list(set([key[1] for key in sorted(d_new_cases_child)]))
+        time_series = time_series_child
         graphxax = time_series
         #print graphxax
         #print len(graphxax)
@@ -918,9 +954,10 @@ def plot_new_cases (metro_ids, time_end, d_new_cases_child, d_new_cases_adult, m
     #plt.xticks(range(0, 10), wklab)
     #plt.show()
     #plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Diagnostic_Plots_Jan_2016/Control/New_Cases/Child/chain_binomial_new_cases_child_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_metrozero_%s.png' % (alpha, ch_travelers_r, R0, gamma, beta, metro_zero)) #use this line to save fig in jan 2016 folder for base params
-    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Diagnostic_Plots_Jan_2016/Experiments/%s/New_Cases/Child/chain_binomial_new_cases_child_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_metrozero_%s.png' % (intervention, alpha, ch_travelers_r, R0, gamma, beta, metro_zero)) # use this line to save fig in jan 2016 folder for experimental params
+    #plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Diagnostic_Plots_Jan_2016/Experiments/%s/New_Cases/Child/chain_binomial_new_cases_child_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_metrozero_%s.png' % (intervention, alpha, ch_travelers_r, R0, gamma, beta, metro_zero)) # use this line to save fig in jan 2016 folder for experimental params
     #plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Diagnostic_Plots/New_Cases/Child/chain_binomial_new_cases_child_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_metrozero_%s.png' % (alpha, ch_travelers_r, R0, gamma, beta, metro_zero))
     #plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Experiments/%s/Plots/Child/chain_binomial_new_cases_child_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_metrozero_%s.png' % (disease_intervention, alpha, ch_travelers_r, R0, gamma, beta, metro_zero))
+    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Experiments/chain_binomial_new_cases_child_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_metrozero_%s_disease_%s_travel_%s.png' % (alpha, ch_travelers_r, R0, gamma, beta, metro_zero, disease_intervention, travel_intervention))
     plt.close()
 
 #might need separate for adult
@@ -928,6 +965,7 @@ def plot_new_cases (metro_ids, time_end, d_new_cases_child, d_new_cases_adult, m
     for met_id in metro_ids:
         #time_series = range(0, time_end)
         time_series = list(set([key[1] for key in sorted(d_new_cases_adult)]))
+        #time_series = time_series_adult
         graphxax = time_series
         graphyax = [d_new_cases_adult[(met_id, time_step)] for time_step in time_series]
         plt.plot(graphxax, graphyax)
@@ -939,17 +977,63 @@ def plot_new_cases (metro_ids, time_end, d_new_cases_child, d_new_cases_adult, m
     #plt.xticks(range(0, 10), wklab)
     #plt.show()
     #plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Diagnostic_Plots_Jan_2016/Control/New_Cases/Adult/chain_binomial_new_cases_adult_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_metrozero_%s.png' % (alpha, ch_travelers_r, R0, gamma, beta, metro_zero)) #use this line to save fig in jan 2016 folder for base params
-    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Diagnostic_Plots_Jan_2016/Experiments/%s/New_Cases/Adult/chain_binomial_new_cases_adult_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_metrozero_%s.png' % (intervention, alpha, ch_travelers_r, R0, gamma, beta, metro_zero)) # use this line to save fig in jan 2016 folder for experimental params
+    #plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Diagnostic_Plots_Jan_2016/Experiments/%s/New_Cases/Adult/chain_binomial_new_cases_adult_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_metrozero_%s.png' % (intervention, alpha, ch_travelers_r, R0, gamma, beta, metro_zero)) # use this line to save fig in jan 2016 folder for experimental params
     #plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Diagnostic_Plots/New_Cases/Adult/chain_binomial_new_cases_adult_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_metrozero_%s.png' % (alpha, ch_travelers_r, R0, gamma, beta, metro_zero))
     #plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Experiments/%s/Plots/Adult/chain_binomial_new_cases_adult_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_metrozero_%s.png' % (disease_intervention, alpha, ch_travelers_r, R0, gamma, beta, metro_zero))
+    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Experiments/chain_binomial_new_cases_adult_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_metrozero_%s_disease_%s_travel_%s.png' % (alpha, ch_travelers_r, R0, gamma, beta, metro_zero, disease_intervention, travel_intervention))
     plt.close()
          
-
 ###################################################
-def plot_current_cases(metro_ids, time_end, d_metro_infected_child, d_metro_infected_adult, metro_zero, alpha, ch_travelers_r, R0, gamma, beta, intervention):
+def create_current_case_tuples (metro_ids, d_metro_infected_child, d_metro_infected_adult, metro_zero):
+# in chain_binomial_monte_carlo
+# takes child and adult current case dictionaries for one metro_zero
+# creates a list of all possible combinations of (metro_zero, met_id, time_step)
+# all possible tuples saved in list tuples, used in plot_current_cases to assign 0 to non-existing tuples in the dict
+    
+    tuples = []
+    for met_id in metro_ids:
+        time_series_child = list(set([key[2] for key in sorted(d_metro_infected_child)]))
+        time_series_adult = list(set([key[2] for key in sorted(d_metro_infected_adult)]))
+        tuple_time_series = list(set(time_series_child + time_series_adult))
+        tuples.extend([(metro_zero, met_id, t) for t in tuple_time_series])
+    
+    return tuples
+    
+###################################################
+def plot_current_cases(current_case_tuples, metro_ids, d_metro_infected_child, d_metro_infected_adult, metro_zero, alpha, ch_travelers_r, R0, gamma, beta, disease_intervention, travel_intervention):
 # time series for currently infected cases
 # one plot for child one for adult
 # one line for each metro area
+
+   # child_list_tuples, adult_list_tuples = [], []
+    
+#    # grab tuples from child time series
+#    for (metro_zero, met_id, time_step) in d_metro_infected_child:
+#        child_list_tuples.append((metro_zero, met_id, time_step))
+#        
+#    for (metro_zero, met_id, time_step) in d_metro_infected_adult:
+#        adult_list_tuples.append((metro_zero, met_id, time_step))
+#
+#    # combine all unique tuples into one list
+#    tuples = list(set(child_list_tuples + adult_list_tuples))
+    
+    #function works within one metro_zero - an argument
+    #create all possible tuple combos
+    #for met_id in metro_ids:
+    #    #time_series = range(0, time_end)
+    #    time_series_child = list(set([key[2] for key in sorted(d_metro_infected_child)]))
+    #    time_series_adult = list(set([key[2] for key in sorted(d_metro_infected_adult)]))
+    #    tuple_time_series = list(set(time_series_child + time_series_adult))
+    #    tuples = [(metro_zero, met_id, t) for t in tuple_time_series]
+    
+    # loop thru unique tuples
+    for t in current_case_tuples:
+        # assign keys not in child a value of 0
+        if t not in d_metro_infected_child: 
+            d_metro_infected_child[t] = d_metro_infected_child.get(t, 0)      
+        # assign keys not in adult a value of 0
+        if t not in d_metro_infected_adult:
+            d_metro_infected_adult[t] = d_metro_infected_adult.get(t, 0)
 
     
  #child
@@ -967,8 +1051,9 @@ def plot_current_cases(metro_ids, time_end, d_metro_infected_child, d_metro_infe
     #plt.xticks(range(0, 10), wklab)
     #plt.show()
     #plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Diagnostic_Plots_Jan_2016/Control/Current_Cases/Child/chain_binomial_current_cases_child_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_metrozero_%s.png' % (alpha, ch_travelers_r, R0, gamma, beta, metro_zero)) #use this line to save fig in jan 2016 folder for base params
-    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Diagnostic_Plots_Jan_2016/Experiments/%s/Current_Cases/Child/chain_binomial_current_cases_child_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_metrozero_%s.png' % (intervention, alpha, ch_travelers_r, R0, gamma, beta, metro_zero)) # use this line to save fig in jan 2016 folder for experimental params
+    #plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Diagnostic_Plots_Jan_2016/Experiments/%s/Current_Cases/Child/chain_binomial_current_cases_child_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_metrozero_%s.png' % (intervention, alpha, ch_travelers_r, R0, gamma, beta, metro_zero)) # use this line to save fig in jan 2016 folder for experimental params
     #plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Diagnostic_Plots/Current_Cases/Child/chain_binomial_current_cases_child_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_metrozero_%s.png' % (alpha, ch_travelers_r, R0, gamma, beta, metro_zero))
+    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Experiments/chain_binomial_current_cases_child_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_metrozero_%s_disease_%s_travel_%s.png' % (alpha, ch_travelers_r, R0, gamma, beta, metro_zero, disease_intervention, travel_intervention))
     plt.close()
 
 #adult
@@ -986,8 +1071,9 @@ def plot_current_cases(metro_ids, time_end, d_metro_infected_child, d_metro_infe
     #plt.xticks(range(0, 10), wklab)
     #plt.show()
     #plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Diagnostic_Plots_Jan_2016/Control/Current_Cases/Adult/chain_binomial_current_cases_adult_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_metrozero_%s.png' % (alpha, ch_travelers_r, R0, gamma, beta, metro_zero)) #use this line to save fig in jan 2016 folder for base params
-    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Diagnostic_Plots_Jan_2016/Experiments/%s/Current_Cases/Adult/chain_binomial_current_cases_adult_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_metrozero_%s.png' % (intervention, alpha, ch_travelers_r, R0, gamma, beta, metro_zero)) # use this line to save fig in jan 2016 folder for experimental params
+    #plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Diagnostic_Plots_Jan_2016/Experiments/%s/Current_Cases/Adult/chain_binomial_current_cases_adult_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_metrozero_%s.png' % (intervention, alpha, ch_travelers_r, R0, gamma, beta, metro_zero)) # use this line to save fig in jan 2016 folder for experimental params
 #    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Diagnostic_Plots/Current_Cases/Adult/chain_binomial_current_cases_adult_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_metrozero_%s.png' % (alpha, ch_travelers_r, R0, gamma, beta, metro_zero))
+    plt.savefig('/home/anne/Dropbox/Anne_Bansal_lab/Modeling_Project_Outputs/Deterministic_Model/Experiments/chain_binomial_current_cases_adult_alpha_%1.2f_r_%s_R0_%s_gamma_%s_beta_%s_metrozero_%s_disease_%s_travel_%s.png' % (alpha, ch_travelers_r, R0, gamma, beta, metro_zero, disease_intervention, travel_intervention))
     plt.close()
 
 ###################################################
@@ -1030,11 +1116,11 @@ def plot_new_cases_unit_tests (unit_test, metro_ids, time_end, d_new_cases_child
     plt.close()   
      
 ###################################################
-def beta_test (betas, gamma, R0, alpha, theta_susc, theta_infc, theta_recv, time_end, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, air_network, ch_travelers_r, ad_travelers_s, params_to_calc_C, manip_exp_params, intervention_time_params, abrv_metro_ids):
+def beta_test (betas, gamma, R0, alpha, theta_susc, theta_infc, theta_recv, time_end, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, ch_travelers_r, ad_travelers_s, params_to_calc_C, manip_exp_params, intervention_time_params, abrv_metro_ids):
     
     d_epi_size, d_epi_size_std = {}, {}
     for beta in betas:
-        average_epidemic_size, std_dev, _, _, _, _, _, _ = chain_binomial_monte_carlo(R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, air_network, ch_travelers_r, ad_travelers_s, params_to_calc_C, manip_exp_params, intervention_time_params, abrv_metro_ids)
+        average_epidemic_size, std_dev, _, _, _, _, _, _ = chain_binomial_monte_carlo(R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, ch_travelers_r, ad_travelers_s, params_to_calc_C, manip_exp_params, intervention_time_params, abrv_metro_ids)
         #add epi_size to dict
 	#divide by pop size to make it a prop of pop
 	#population_size = sum([d_metropop[x] for x in metro_ids])
@@ -1056,11 +1142,11 @@ def beta_test (betas, gamma, R0, alpha, theta_susc, theta_infc, theta_recv, time
     plt.close()
    
 ###################################################  
-def gamma_test (beta, gammas, R0, alpha, theta_susc, theta_infc, theta_recv, time_end, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, air_network, ch_travelers_r, ad_travelers_s, params_to_calc_C, manip_exp_params, intervention_time_params, abrv_metro_ids):
+def gamma_test (beta, gammas, R0, alpha, theta_susc, theta_infc, theta_recv, time_end, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, ch_travelers_r, ad_travelers_s, params_to_calc_C, manip_exp_params, intervention_time_params, abrv_metro_ids):
     
     d_epi_size, d_epi_size_std = {}, {}
     for gamma in gammas:
-        average_epidemic_size, std_dev, _, _, _, _, _, _ = chain_binomial_monte_carlo(R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, air_network, ch_travelers_r, ad_travelers_s, params_to_calc_C, manip_exp_params, intervention_time_params, abrv_metro_ids)
+        average_epidemic_size, std_dev, _, _, _, _, _, _ = chain_binomial_monte_carlo(R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, ch_travelers_r, ad_travelers_s, params_to_calc_C, manip_exp_params, intervention_time_params, abrv_metro_ids)
         #add epi_size to dict
         d_epi_size[(gamma)] = average_epidemic_size
         d_epi_size_std[(gamma)] = std_dev
@@ -1078,7 +1164,7 @@ def gamma_test (beta, gammas, R0, alpha, theta_susc, theta_infc, theta_recv, tim
     plt.close()   
 
 ###################################################  
-def def_orig_params (disease_intervention, travel_intervention, beta, C, ch_travelers_r, ad_travelers_s, theta_susc, theta_infc, theta_recv):
+def def_orig_params (disease_intervention, travel_intervention, beta, C, ch_travelers_r, ad_travelers_s, theta_susc, theta_infc, theta_recv, baseline_air_network):
     
     #experiment = 'no'
     #intervention = 'none'
@@ -1087,13 +1173,13 @@ def def_orig_params (disease_intervention, travel_intervention, beta, C, ch_trav
     #C = pop_func.calc_contact_matrix_pqa(p_c, p_a, q_c, q_a, alpha)
     #beta = 0.03
     
-    base_param_dict = {'dis_int': disease_intervention, 'trav_int': travel_intervention, 'beta': beta, 'C': C, 'r': ch_travelers_r, 's': ad_travelers_s, 'theta_susc': theta_susc, 'theta_infc': theta_infc, 'theta_recv': theta_recv}
+    base_param_dict = {'dis_int': disease_intervention, 'trav_int': travel_intervention, 'beta': beta, 'C': C, 'r': ch_travelers_r, 's': ad_travelers_s, 'theta_susc': theta_susc, 'theta_infc': theta_infc, 'theta_recv': theta_recv, 'trav_network': baseline_air_network}
     
     return base_param_dict
     #return C, beta
             
 ###################################################    
-def def_disease_exp_params (disease_intervention, travel_intervention, beta, C, ch_travelers_r, ad_travelers_s, theta_susc, theta_infc, theta_recv):
+def def_disease_exp_params (disease_intervention, travel_intervention, beta, C, ch_travelers_r, ad_travelers_s, theta_susc, theta_infc, theta_recv, baseline_air_network):
     
     if disease_intervention == 'red_C_cc':
         C_red = exp_func.reduce_C_cc(C)
@@ -1120,13 +1206,14 @@ def def_disease_exp_params (disease_intervention, travel_intervention, beta, C, 
     tsusc = theta_susc
     tinfc = theta_infc
     trecv = theta_recv
+    travel_net = baseline_air_network
     
-    exp_param_dict = {'dis_int': disease_intervention, 'trav_int': travel_intervention, 'beta': beta_exp, 'C': C_red, 'r': ch_trav, 's': ad_trav, 'theta_susc': tsusc, 'theta_infc': tinfc, 'theta_recv': trecv}
+    exp_param_dict = {'dis_int': disease_intervention, 'trav_int': travel_intervention, 'beta': beta_exp, 'C': C_red, 'r': ch_trav, 's': ad_trav, 'theta_susc': tsusc, 'theta_infc': tinfc, 'theta_recv': trecv, 'trav_network': travel_net}
 
     return exp_param_dict
     
 ###################################################
-def def_exp_params (disease_intervention, travel_intervention, beta, C, ch_travelers_r, ad_travelers_s, theta_susc, theta_infc, theta_recv):
+def def_exp_params (disease_intervention, travel_intervention, beta, C, ch_travelers_r, ad_travelers_s, theta_susc, theta_infc, theta_recv, baseline_air_network, holiday_air_network):
 # use this dictionary during the travel intervention period (overlaps with one week of disease intervention)
 
     if disease_intervention == 'red_C_cc':
@@ -1155,6 +1242,7 @@ def def_exp_params (disease_intervention, travel_intervention, beta, C, ch_trave
         tsusc = theta_susc
         tinfc = theta_infc
         trecv = theta_recv
+        travel_net = baseline_air_network
         
     elif travel_intervention == 'inc_all_trav':
         ch_trav = 0.15 # based on Kucharski increase for children fig. 2 (>30 mile travel)
@@ -1162,6 +1250,15 @@ def def_exp_params (disease_intervention, travel_intervention, beta, C, ch_trave
         tsusc = (theta_susc * 1.23)
         tinfc = (theta_infc * 1.23)
         trecv = (theta_recv * 1.23)
+        travel_net = baseline_air_network
+        
+    elif travel_intervention == 'swap_networks':
+        ch_trav = ch_travelers_r
+        ad_trav = ad_travelers_s
+        tsusc = theta_susc
+        tinfc = theta_infc
+        trecv = theta_recv
+        travel_net = holiday_air_network
     
     elif travel_intervention == 'none':
         ch_trav = ch_travelers_r
@@ -1169,8 +1266,9 @@ def def_exp_params (disease_intervention, travel_intervention, beta, C, ch_trave
         tsusc = theta_susc
         tinfc = theta_infc
         trecv = theta_recv
+        travel_net = baseline_air_network
 
-    exp_param_dict = {'dis_int': disease_intervention, 'trav_int': travel_intervention, 'beta': beta_exp, 'C': C_red,'r': ch_trav,'s': ad_trav, 'theta_susc': tsusc, 'theta_infc': tinfc, 'theta_recv': trecv}
+    exp_param_dict = {'dis_int': disease_intervention, 'trav_int': travel_intervention, 'beta': beta_exp, 'C': C_red,'r': ch_trav,'s': ad_trav, 'theta_susc': tsusc, 'theta_infc': tinfc, 'theta_recv': trecv, 'trav_network': travel_net}
     
     return exp_param_dict
     
@@ -1260,12 +1358,19 @@ def write_metro_peaks (num_metro_zeros, num_child_zeros, num_adult_zeros, metro_
 if __name__ == "__main__":
     
     # READ METRO NETWORK FROM FILE
-    filename_metropop = 'Dropbox/Anne_Bansal_lab/Python_Scripts/Modeling_Project/air_traffic_data/metedges.txt'
-    d_metropop, metro_ids = pop_func.import_metropop(filename_metropop, 2, 3)
+    #filename_metropop = 'Dropbox/Anne_Bansal_lab/Python_Scripts/Modeling_Project/air_traffic_data/metedges.txt'
+    #d_metropop, metro_ids = pop_func.import_metropop(filename_metropop, 2, 3)
+    filename_metropop = 'Dropbox/Anne_Bansal_lab/Python_Scripts/Modeling_Project/air_traffic_data/edgelists/metro_pop.csv'
+    d_metropop, metro_ids = pop_func.import_csv_metropop(filename_metropop, 1, 2)
     sorted_metro_ids = sorted(metro_ids)
-    abrv_metro_ids = sorted_metro_ids[:2]
+    abrv_metro_ids = sorted_metro_ids
+    #abrv_metro_ids = sorted_metro_ids[:5]
     filename_air_network = 'Dropbox/Anne_Bansal_lab/Python_Scripts/Modeling_Project/air_traffic_data/air_traffic_edgelist.txt'
-    air_network = read_edgelist_anne(filename_air_network)
+    filename_baseline_air_network = 'Dropbox/Anne_Bansal_lab/Python_Scripts/Modeling_Project/air_traffic_data/edgelists/baseline_flight_network_undirected.txt'
+    filename_holiday_air_network = 'Dropbox/Anne_Bansal_lab/Python_Scripts/Modeling_Project/air_traffic_data/edgelists/holiday_flight_network_undirected.txt'
+    #air_network = read_edgelist_anne(filename_air_network)
+    baseline_air_network = read_edgelist_anne(filename_baseline_air_network)
+    holiday_air_network = read_edgelist_anne(filename_holiday_air_network)
     # READ US population data
     us_popdata = csv.reader(open('Dropbox/Anne_Bansal_lab/SDI_Data/totalpop_age.csv', 'r'),delimiter = ',')
     dict_popdata, ages, years = pop_func.import_popdata(us_popdata, 0, 1, 2)
@@ -1280,7 +1385,7 @@ if __name__ == "__main__":
     # DEFINE POPULATION PARAMETERS
     year = 2010
     alpha = pop_func.calc_alpha(year, dict_childpop, dict_adultpop)
-    d_metro_age_pop = pop_func.calc_metro_age_pop(filename_metropop, alpha)
+    d_metro_age_pop = pop_func.calc_csv_metro_age_pop(filename_metropop, alpha)
     ch_travelers_r = 0.0 # fraction of children who travel
     ad_travelers_s = (1 - ch_travelers_r)
     
@@ -1326,7 +1431,8 @@ if __name__ == "__main__":
     manip_exp_params.append(disease_intervention)
     #travel_intervention = 'none'
     #travel_intervention = 'inc_child_trav'
-    travel_intervention = 'inc_all_trav'
+    #travel_intervention = 'inc_all_trav'
+    travel_intervention = 'swap_networks'
     manip_exp_params.append(travel_intervention)
     
     timing = 'actual'
@@ -1368,9 +1474,9 @@ if __name__ == "__main__":
     manip_exp_params.append(theta_infc)
     manip_exp_params.append(theta_recv)
     
-    base_param_dict = def_orig_params(disease_intervention, travel_intervention, beta, C, ch_travelers_r, ad_travelers_s, theta_susc, theta_infc, theta_recv)
-    disease_exp_param_dict = def_disease_exp_params(disease_intervention, travel_intervention, beta, C, ch_travelers_r, ad_travelers_s, theta_susc, theta_infc, theta_recv) # this dictionary is for the week with only the disease intervention
-    exp_param_dict = def_exp_params(disease_intervention, travel_intervention, beta, C, ch_travelers_r, ad_travelers_s, theta_susc, theta_infc, theta_recv) # this dictionary is for the week with the travel and the disease intervention
+    base_param_dict = def_orig_params(disease_intervention, travel_intervention, beta, C, ch_travelers_r, ad_travelers_s, theta_susc, theta_infc, theta_recv, baseline_air_network)
+    disease_exp_param_dict = def_disease_exp_params(disease_intervention, travel_intervention, beta, C, ch_travelers_r, ad_travelers_s, theta_susc, theta_infc, theta_recv, baseline_air_network) # this dictionary is for the week with only the disease intervention
+    exp_param_dict = def_exp_params(disease_intervention, travel_intervention, beta, C, ch_travelers_r, ad_travelers_s, theta_susc, theta_infc, theta_recv, baseline_air_network, holiday_air_network) # this dictionary is for the week with the travel and the disease intervention
     
     
     #
@@ -1381,7 +1487,8 @@ if __name__ == "__main__":
     #exp_param_list = [experiment, time_exp_start, time_exp_end, beta_exp, C_cc_red]
     
     # RUN EPIDEMIC SIMULATIONS
-    average_epidemic_size, std_dev, adult_epi_size, child_epi_size, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult = chain_binomial_monte_carlo(R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, air_network, ch_travelers_r, ad_travelers_s, params_to_calc_C, manip_exp_params, intervention_time_params, abrv_metro_ids)
+    average_epidemic_size, std_dev, adult_epi_size, child_epi_size, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult = chain_binomial_monte_carlo(R0, beta, gamma, alpha, theta_susc, theta_infc, theta_recv, time_end, num_metro_zeros, num_child_zeros, num_adult_zeros, d_metropop, metro_ids, filename_metropop, ch_travelers_r, ad_travelers_s, params_to_calc_C, manip_exp_params, intervention_time_params, abrv_metro_ids)
+    #check in this function to see if plot_new_cases and plot_current_cases are turned on
     
     #time_series = list(set([key[1] for key in sorted(incidence_time_series_metro_child)]))
     #print len(time_series)
@@ -1406,12 +1513,12 @@ if __name__ == "__main__":
     #write_csv_file_test_beta(num_metro_zeros, num_child_zeros, num_adult_zeros, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, beta)
     
     #MAIN - record data
-    #write_csv_file(incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, disease_intervention, travel_intervention, timing)
+    write_csv_file(incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, disease_intervention, travel_intervention, timing)
 
     #record metro_peaks
-    metro_time_series, tuples = calc_metro_tot_age_epi(incidence_time_series_metro_child, incidence_time_series_metro_adult)
-    metro_zero, d_metro_peak = calc_metro_peaks(metro_time_series, tuples)
-    write_metro_peaks(num_metro_zeros, num_child_zeros, num_adult_zeros, metro_zero, disease_intervention, travel_intervention, timing, metro_ids, d_metro_peak, metro_time_series)
+    #metro_time_series, tuples = calc_metro_tot_age_epi(incidence_time_series_metro_child, incidence_time_series_metro_adult)
+    #metro_zero, d_metro_peak = calc_metro_peaks(metro_time_series, tuples)
+    #write_metro_peaks(num_metro_zeros, num_child_zeros, num_adult_zeros, metro_zero, disease_intervention, travel_intervention, timing, metro_ids, d_metro_peak, metro_time_series)
 
     # CALC NAT EPI
     #print abrv_metro_ids
