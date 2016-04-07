@@ -1253,8 +1253,8 @@ def def_exp_params (disease_intervention, travel_intervention, beta, C, ch_trave
         travel_net = baseline_air_network
         
     elif travel_intervention == 'swap_networks':
-        ch_trav = ch_travelers_r
-        ad_trav = ad_travelers_s
+        ch_trav = 0.15 # based on Kucharski increase for children fig. 2 (>30 mile travel)
+        ad_trav = (1 - ch_trav)
         tsusc = theta_susc
         tinfc = theta_infc
         trecv = theta_recv
@@ -1288,6 +1288,34 @@ def calc_national_peak (incidence_time_series_metro_child, incidence_time_series
     
     return national_incidence_time_series
     
+###################################################
+def national_adult_child_time_series (metro_zero, incidence_time_series_metro_child, incidence_time_series_metro_adult, metro_ids):
+# this function will sum flu at each time step to find the national peak    
+    
+    time_series_child = list(set([key[2] for key in sorted(incidence_time_series_metro_child)]))
+    time_series_adult = list(set([key[2] for key in sorted(incidence_time_series_metro_adult)]))
+    infc_met_ids_child = list(set([key[1] for key in sorted(incidence_time_series_metro_child)]))
+    infc_met_ids_adult = list(set([key[1] for key in sorted(incidence_time_series_metro_adult)]))
+    national_incidence_time_series_child, national_incidence_time_series_adult = {}, {}
+    for t in time_series_child:
+        sum_metro_child = sum([incidence_time_series_metro_child[(metro_zero, met_id, t)] for met_id in infc_met_ids_child])
+        national_incidence_time_series_child[(metro_zero, t)] = sum_metro_child
+    for t in time_series_adult:
+        sum_metro_adult = sum([incidence_time_series_metro_adult[(metro_zero, met_id, t)] for met_id in infc_met_ids_adult])
+        national_incidence_time_series_adult[(metro_zero, t)] = sum_metro_adult
+    
+    return time_series_child, time_series_adult, national_incidence_time_series_child, national_incidence_time_series_adult
+
+###################################################
+def write_nat_ad_ch_time_series (num_metro_zeros, num_child_zeros, num_adult_zeros, metro_zero, disease_intervention, travel_intervention, timing, time_series_child, time_series_adult, national_incidence_time_series_child, national_incidence_time_series_adult):
+    
+    csvfile = csv.writer(open('/home/anne/Dropbox/Anne_Bansal_lab/Manuscript_Figures/national_time_series_adult_child_nummetrozeros_%s_numchildzeros_%s_numadultzeros_%s_metrozero_%s_disease_%s_travel_%s_timing_%s.csv' % (num_metro_zeros, num_child_zeros, num_adult_zeros, metro_zero, disease_intervention, travel_intervention, timing), 'wb'), delimiter = ',')
+    csvfile.writerow(['metro_zero', 'time_step', 'age', 'cases'])
+    for time in time_series_child:
+        csvfile.writerow([metro_zero, time, 'C', (national_incidence_time_series_child[(metro_zero, time)])])
+    for time in time_series_adult:
+        csvfile.writerow([metro_zero, time, 'A', (national_incidence_time_series_adult[(metro_zero, time)])])
+        
 ###################################################
 def calc_metro_tot_age_epi (incidence_time_series_metro_child, incidence_time_series_metro_adult):
 # this function sums each metro's adult peak with its child peak = total metro epidemic
@@ -1363,8 +1391,9 @@ if __name__ == "__main__":
     filename_metropop = 'Dropbox/Anne_Bansal_lab/Python_Scripts/Modeling_Project/air_traffic_data/edgelists/metro_pop.csv'
     d_metropop, metro_ids = pop_func.import_csv_metropop(filename_metropop, 1, 2)
     sorted_metro_ids = sorted(metro_ids)
-    abrv_metro_ids = sorted_metro_ids
-    #abrv_metro_ids = sorted_metro_ids[:5]
+    #abrv_metro_ids = sorted_metro_ids
+    abrv_metro_ids = sorted_metro_ids[:1]
+    print abrv_metro_ids
     filename_air_network = 'Dropbox/Anne_Bansal_lab/Python_Scripts/Modeling_Project/air_traffic_data/air_traffic_edgelist.txt'
     filename_baseline_air_network = 'Dropbox/Anne_Bansal_lab/Python_Scripts/Modeling_Project/air_traffic_data/edgelists/baseline_flight_network_undirected.txt'
     filename_holiday_air_network = 'Dropbox/Anne_Bansal_lab/Python_Scripts/Modeling_Project/air_traffic_data/edgelists/holiday_flight_network_undirected.txt'
@@ -1426,13 +1455,13 @@ if __name__ == "__main__":
     manip_exp_params.append(experiment)
     #disease_intervention = 'red_C_cc'
     #disease_intervention = 'red_C_aa'
-    disease_intervention = 'red_C_all'
-    #disease_intervention = 'none'
+    #disease_intervention = 'red_C_all'
+    disease_intervention = 'none'
     manip_exp_params.append(disease_intervention)
-    #travel_intervention = 'none'
+    travel_intervention = 'none'
     #travel_intervention = 'inc_child_trav'
     #travel_intervention = 'inc_all_trav'
-    travel_intervention = 'swap_networks'
+    #travel_intervention = 'swap_networks'
     manip_exp_params.append(travel_intervention)
     
     timing = 'actual'
@@ -1513,7 +1542,7 @@ if __name__ == "__main__":
     #write_csv_file_test_beta(num_metro_zeros, num_child_zeros, num_adult_zeros, incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, beta)
     
     #MAIN - record data
-    write_csv_file(incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, disease_intervention, travel_intervention, timing)
+    #write_csv_file(incidence_time_series_metro_child, incidence_time_series_metro_adult, tot_incidence_time_series_child, tot_incidence_time_series_adult, disease_intervention, travel_intervention, timing)
 
     #record metro_peaks
     #metro_time_series, tuples = calc_metro_tot_age_epi(incidence_time_series_metro_child, incidence_time_series_metro_adult)
@@ -1521,6 +1550,17 @@ if __name__ == "__main__":
     #write_metro_peaks(num_metro_zeros, num_child_zeros, num_adult_zeros, metro_zero, disease_intervention, travel_intervention, timing, metro_ids, d_metro_peak, metro_time_series)
 
     # CALC NAT EPI
+    #only need one metro id
     #print abrv_metro_ids
-    #nat_time_series = calc_national_peak (incidence_time_series_metro_child, incidence_time_series_metro_adult, metro_ids)
-    #print nat_time_series
+    nat_time_series = calc_national_peak(incidence_time_series_metro_child, incidence_time_series_metro_adult, metro_ids) # create dictionary with key: (metro_zero, time_step), value: total national cases
+    time_series = list(set([key[1] for key in sorted(nat_time_series)])) # create list of all time steps
+    nat_epi = [nat_time_series[(1, t)] for t in time_series] # create list of all cases
+    peak = [t for t in time_series if nat_time_series[(1, t)] == (max(nat_epi))] # grab time_step that corresponds to max value from list of # of cases
+    print peak
+    
+    #Create CSV file for adult and child national time series for manuscript figure 3
+    #metro_zero_file = 1 #pick which one you want to graph
+    #time_series_child, time_series_adult, national_incidence_time_series_child, national_incidence_time_series_adult = national_adult_child_time_series(metro_zero_file, incidence_time_series_metro_child, incidence_time_series_metro_adult, metro_ids)
+    #write_nat_ad_ch_time_series(num_metro_zeros, num_child_zeros, num_adult_zeros, metro_zero_file, disease_intervention, travel_intervention, timing, time_series_child, time_series_adult, national_incidence_time_series_child, national_incidence_time_series_adult)
+    
+    
